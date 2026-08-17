@@ -20,6 +20,7 @@
           <td><div class="actions">
             <a class="button button-secondary button-small" href="/admin/assignments/<%= assignment.id %>/edit">수정</a>
             <form method="post" action="/admin/assignments/<%= assignment.id %>/toggle" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button-secondary button-small" type="submit"><%= assignment.is_visible ? '비공개' : '공개' %></button></form>
+            <form method="post" action="/admin/assignments/<%= assignment.id %>/delete" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button-danger button-small" type="submit" data-confirm="미션 <%= assignment.round_no %>과 관련 제출 내역을 모두 삭제할까요?">삭제</button></form>
           </div></td>
         </tr><% }) %>
       </tbody>

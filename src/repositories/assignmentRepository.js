@@ -124,5 +124,14 @@ export const assignmentRepository = {
   async toggleVisibility(id) {
     await pool.execute("UPDATE assignments SET is_visible = CASE WHEN is_visible = 1 THEN 0 ELSE 1 END, updated_at = datetime('now', 'localtime') WHERE id = ?", [id]);
     return this.findById(id);
+  },
+
+  async delete(id) {
+    return withTransaction(async (connection) => {
+      connection.execute('DELETE FROM submissions WHERE assignment_id = ?', [id]);
+      connection.execute('DELETE FROM assignment_artists WHERE assignment_id = ?', [id]);
+      const [result] = connection.execute('DELETE FROM assignments WHERE id = ?', [id]);
+      return Number(result.affectedRows || 0) > 0;
+    });
   }
 };

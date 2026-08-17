@@ -39,6 +39,7 @@ router.post('/assignments', asyncHandler(adminController.createAssignment));
 router.get('/assignments/:id/edit', asyncHandler(adminController.showAssignmentEdit));
 router.post('/assignments/:id', asyncHandler(adminController.updateAssignment));
 router.post('/assignments/:id/toggle', asyncHandler(adminController.toggleAssignment));
+router.post('/assignments/:id/delete', asyncHandler(adminController.deleteAssignment));
 
 router.get('/submissions', asyncHandler(adminController.submissions));
 router.get('/submissions/:id', asyncHandler(adminController.submissionDetail));
@@ -50,5 +51,6 @@ router.post('/notices', asyncHandler(adminController.createNotice));
 router.get('/notices/:id/edit', asyncHandler(adminController.showNoticeEdit));
 router.post('/notices/:id', asyncHandler(adminController.updateNotice));
 router.post('/notices/:id/toggle', asyncHandler(adminController.toggleNotice));
+router.post('/notices/:id/delete', asyncHandler(adminController.deleteNotice));
 
 export default router;

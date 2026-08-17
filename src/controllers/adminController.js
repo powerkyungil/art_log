@@ -316,6 +316,14 @@ export const adminController = {
     return res.redirect('/admin/assignments');
   },
 
+  async deleteAssignment(req, res) {
+    const assignment = await assignmentRepository.findById(req.params.id);
+    if (!assignment) return res.status(404).render('error', { title: '미션을 찾을 수 없습니다', message: '존재하지 않는 미션입니다.' });
+    await assignmentRepository.delete(assignment.id);
+    req.flash('success', `미션 ${assignment.round_no}과 관련 제출 내역이 삭제되었습니다.`);
+    return res.redirect('/admin/assignments');
+  },
+
   async submissions(req, res) {
     const filters = {
       search: req.query.search || '', status: req.query.status || '',
@@ -387,6 +395,14 @@ export const adminController = {
   async toggleNotice(req, res) {
     await noticeRepository.toggleVisibility(req.params.id);
     req.flash('success', '공지사항 공개 상태가 변경되었습니다.');
+    return res.redirect('/admin/notices');
+  },
+
+  async deleteNotice(req, res) {
+    const notice = await noticeRepository.findById(req.params.id);
+    if (!notice) return res.status(404).render('error', { title: '공지사항을 찾을 수 없습니다', message: '존재하지 않는 공지사항입니다.' });
+    await noticeRepository.delete(notice.id);
+    req.flash('success', '공지사항이 삭제되었습니다.');
     return res.redirect('/admin/notices');
   }
 };

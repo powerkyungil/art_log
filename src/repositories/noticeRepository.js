@@ -37,5 +37,10 @@ export const noticeRepository = {
   async toggleVisibility(id) {
     await pool.execute("UPDATE notices SET is_visible = CASE WHEN is_visible = 1 THEN 0 ELSE 1 END, updated_at = datetime('now', 'localtime') WHERE id = ?", [id]);
     return this.findById(id);
+  },
+
+  async delete(id) {
+    const [result] = await pool.execute('DELETE FROM notices WHERE id = ?', [id]);
+    return Number(result.affectedRows || 0) > 0;
   }
 };
