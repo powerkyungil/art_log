@@ -4,12 +4,20 @@
     <button class="button button-secondary" type="submit">필터 적용</button>
   </form>
 
+  <% const assignmentStatusList = (artist) => {
+    if (Array.isArray(artist.assignmentStatuses)) return artist.assignmentStatuses;
+    if (artist.assignmentStatuses instanceof Map) return [...artist.assignmentStatuses.values()];
+    if (artist.assignments instanceof Map) return [...artist.assignments.values()];
+    return [];
+  }; %>
+  <% const emptyAssignmentStatus = { status: 'NOT_SUBMITTED', submittedAt: null, postUrl: null }; %>
+
   <% if (!dashboard.assignments.length) { %>
     <div class="empty-state">공개된 미션을 먼저 등록해주세요.</div>
   <% } else if (!dashboard.artists.length) { %>
     <div class="empty-state">표시할 활동 작가가 없습니다.</div>
   <% } else { %>
-    <% const visibleGroups = dashboard.assignmentGroups.filter((group) => group.assignments.some((assignment) => dashboard.artists.some((artist) => artist.assignmentStatuses.find((item) => item.assignmentId === assignment.id)?.applicable))); %>
+    <% const visibleGroups = dashboard.assignmentGroups.filter((group) => group.assignments.some((assignment) => dashboard.artists.some((artist) => assignmentStatusList(artist).find((item) => item.assignmentId === assignment.id)?.applicable))); %>
     <% if (!visibleGroups.length) { %>
       <div class="empty-state">등록된 미션이 없습니다.</div>
     <% } else { %>
@@ -47,7 +55,7 @@
               </div>
               <div class="mission-artist-list">
                 <% dashboard.artists.forEach((artist) => { %>
-                  <% const assignmentStatus = artist.assignmentStatuses.find((item) => item.assignmentId === mission.id); %>
+                  <% const assignmentStatus = assignmentStatusList(artist).find((item) => item.assignmentId === mission.id) || emptyAssignmentStatus; %>
                   <% const completed = ['SUBMITTED', 'CONFIRMED'].includes(assignmentStatus.status); %>
                   <div class="mission-artist-row">
                     <div class="mission-artist-main">
