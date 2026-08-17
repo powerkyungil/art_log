@@ -1,0 +1,32 @@
+<%- include('../../partials/admin-head', { title }) %>
+
+<div class="page-heading">
+  <div><div class="eyebrow">SUBMISSIONS</div><h1>제출 내역</h1><p>관리 월별 작가 게시물 URL과 확인 상태를 관리합니다.</p></div>
+</div>
+
+<section class="section-card">
+  <form method="get" action="/admin/submissions" class="filters">
+    <label>관리 월<input type="month" name="month" value="<%= filters.month %>" required></label>
+    <label class="filter-search">검색<input type="search" name="search" value="<%= filters.search %>" placeholder="작가명 또는 URL"></label>
+    <label>과제<select name="assignment_id"><option value="">전체 과제</option><% assignments.forEach((assignment) => { %><option value="<%= assignment.id %>" <%= String(filters.assignmentId) === String(assignment.id) ? 'selected' : '' %>><%= assignment.week %>주차 · <%= assignment.title %></option><% }) %></select></label>
+    <label>채널<select name="channel"><option value="">전체 채널</option><% channels.forEach((channel) => { %><option value="<%= channel %>" <%= filters.channel === channel ? 'selected' : '' %>><%= channel %></option><% }) %></select></label>
+    <label>상태<select name="status"><option value="">전체 상태</option><option value="SUBMITTED" <%= filters.status === 'SUBMITTED' ? 'selected' : '' %>>제출</option><option value="CONFIRMED" <%= filters.status === 'CONFIRMED' ? 'selected' : '' %>>확인완료</option></select></label>
+    <button class="button button-secondary" type="submit">검색</button>
+  </form>
+  <% if (!submissions.length) { %><div class="empty-state">제출 내역이 없습니다.</div><% } else { %>
+    <div class="table-wrap"><table>
+      <thead><tr><th>제출번호</th><th>작가</th><th>주차</th><th>업로드 날짜</th><th>채널</th><th>주제</th><th>URL</th><th>상태</th></tr></thead>
+      <tbody>
+        <% submissions.forEach((submission) => { %><tr>
+          <td><a href="/admin/submissions/<%= submission.id %>">#<%= submission.id %></a></td>
+          <td><a href="/admin/artists/<%= submission.artist_id %>"><%= displayName(submission.artist_name) %></a></td>
+          <td><%= submission.week %>주차</td><td><%= submission.upload_date %></td><td><%= submission.upload_channel %></td><td><%= submission.topic %></td>
+          <td><a href="<%= submission.post_url %>" target="_blank" rel="noopener noreferrer">URL 보기</a></td>
+          <td><span class="badge badge-<%= statusClass(submission.status) %>"><%= statusLabel(submission.status) %></span></td>
+        </tr><% }) %>
+      </tbody>
+    </table></div>
+  <% } %>
+</section>
+
+<%- include('../../partials/admin-foot') %>

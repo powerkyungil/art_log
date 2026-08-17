@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> | Art Log</title>
+  <link rel="stylesheet" href="/css/app.css">
+</head>
+<body>
+  <main class="center-page login-page">
+    <div class="card login-card">
+      <div class="wordmark" aria-label="SONY">SONY</div>
+      <div class="eyebrow">ART LOG ADMIN</div>
+      <h1>관리자 로그인</h1>
+      <p class="muted-text">작가 활동과 제출 현황을 관리합니다.</p>
+      <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+      <form method="post" action="/admin/login" class="stack-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        <input type="hidden" name="next" value="<%= next %>">
+        <label>아이디<input type="text" name="login_id" value="<%= loginId %>" autocomplete="username" required></label>
+        <label>비밀번호<input type="password" name="password" autocomplete="current-password" required></label>
+        <button class="button button-primary button-full" type="submit">로그인</button>
+      </form>
+      <a class="back-link" href="/">작가 로그인</a>
+    </div>
+  </main>
+</body>
+</html>

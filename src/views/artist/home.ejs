@@ -1,0 +1,63 @@
+<%- include('../partials/artist-head', { title }) %>
+
+<section class="card hero-card" style="margin-bottom:18px">
+  <div class="eyebrow">MY ACTIVITY</div>
+  <h1><%= displayName(artist.name) %>님</h1>
+  <p class="muted-text">현재 진행 중인 과제와 제출 현황을 확인해주세요.</p>
+  <div class="actions"><a class="button button-secondary" href="/artist/submissions">나의 활동 내역</a></div>
+</section>
+
+<div class="artist-grid">
+  <div>
+    <section class="section-card">
+      <div class="section-title"><h2>이번 주 과제</h2><% if (currentAssignment) { %><span class="badge badge-info"><%= currentAssignment.week %>주차</span><% } %></div>
+      <% if (!currentAssignment) { %>
+        <div class="empty-state">현재 진행 중인 과제가 없습니다.</div>
+      <% } else { %>
+        <div class="assignment-card">
+          <h2><%= currentAssignment.title %></h2>
+          <p class="muted-text"><%= currentAssignment.topic %></p>
+          <% if (currentAssignment.description) { %><p class="notice-content"><%= currentAssignment.description %></p><% } %>
+          <div class="assignment-meta"><span>마감 <strong><%= formatDateTime(currentAssignment.due_at) %></strong></span><% if (currentAssignment.recommended_channel) { %><span>권장 채널 <strong><%= currentAssignment.recommended_channel %></strong></span><% } %></div>
+          <% if (currentSubmission) { %>
+            <div class="actions">
+              <span class="badge badge-<%= statusClass(currentSubmission.status) %>"><%= statusLabel(currentSubmission.status) %></span>
+              <% if (currentSubmission.status !== 'CONFIRMED') { %><a class="button button-primary" href="/artist/submissions/<%= currentSubmission.submission_id %>/edit">제출 내용 수정</a><% } %>
+            </div>
+          <% } else { %>
+            <a class="button button-primary" href="/artist/submissions/new?assignment_id=<%= currentAssignment.id %>">과제 제출하기</a>
+          <% } %>
+        </div>
+      <% } %>
+    </section>
+
+    <section class="section-card">
+      <div class="section-title"><h2>나의 진행 현황</h2><a href="/artist/submissions" class="small-text">전체 보기</a></div>
+      <% if (!activity.length) { %><div class="empty-state">아직 공개된 과제가 없습니다.</div><% } else { %>
+        <div class="activity-list">
+          <% activity.forEach((item) => { %><div class="activity-row">
+            <div class="activity-main"><strong><%= item.week %>주차 · <%= item.title %></strong><span><%= item.upload_date || '제출 전' %> · <%= item.upload_channel || '채널 미선택' %></span></div>
+            <span class="badge badge-<%= statusClass(item.status || 'NOT_SUBMITTED') %>"><%= statusLabel(item.status || 'NOT_SUBMITTED') %></span>
+          </div><% }) %>
+        </div>
+      <% } %>
+    </section>
+  </div>
+
+  <aside>
+    <section class="section-card">
+      <div class="section-title"><h2>공지사항</h2></div>
+      <% if (!notices.length) { %><div class="empty-state">등록된 공지가 없습니다.</div><% } else { %>
+        <div class="notice-list"><% notices.forEach((notice) => { %><article class="notice-item"><div class="notice-title"><h3><% if (notice.is_pinned) { %><span class="badge badge-info">고정</span> <% } %><%= notice.title %></h3></div><div class="notice-content"><%= notice.content %></div><div class="muted-text small-text" style="margin-top:8px"><%= formatDateTime(notice.published_at || notice.created_at) %></div></article><% }) %></div>
+      <% } %>
+    </section>
+
+    <% if (nextAssignment) { %>
+      <section class="section-card">
+        <div class="eyebrow">NEXT ASSIGNMENT</div><h2><%= nextAssignment.week %>주차</h2><h3><%= nextAssignment.title %></h3><p class="muted-text"><%= nextAssignment.topic %></p><p class="small-text muted-text">공개 시작 <%= formatDateTime(nextAssignment.start_at) %></p>
+      </section>
+    <% } %>
+  </aside>
+</div>
+
+<%- include('../partials/artist-foot') %>

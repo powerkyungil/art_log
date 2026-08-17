@@ -1,0 +1,21 @@
+<%- include('../../partials/admin-head', { title }) %>
+
+<div class="page-heading">
+  <div><div class="eyebrow">NOTICE</div><h1><%= title %></h1><p>작가 홈 상단에 최신 공지가 표시됩니다.</p></div>
+  <a class="button button-secondary" href="/admin/notices">목록으로</a>
+</div>
+
+<section class="section-card">
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form method="post" action="<%= mode === 'create' ? '/admin/notices' : `/admin/notices/${notice.id}` %>" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>제목 *<input type="text" name="title" value="<%= notice.title || '' %>" maxlength="255" required></label>
+    <label>내용 *<textarea name="content" required><%= notice.content || '' %></textarea></label>
+    <label>공개 예정일<input type="datetime-local" name="published_at" value="<%= toDateTimeLocal(notice.published_at) %>"></label>
+    <label class="checkbox"><input type="checkbox" name="is_pinned" value="1" <%= notice.is_pinned ? 'checked' : '' %>> 상단 고정</label>
+    <label class="checkbox"><input type="checkbox" name="is_visible" value="1" <%= notice.is_visible !== 0 ? 'checked' : '' %>> 작가에게 공개</label>
+    <div class="actions"><button class="button button-primary" type="submit"><%= mode === 'create' ? '공지 등록' : '수정 저장' %></button><a class="button button-secondary" href="/admin/notices">취소</a></div>
+  </form>
+</section>
+
+<%- include('../../partials/admin-foot') %>

@@ -1,0 +1,24 @@
+<%- include('../partials/artist-head', { title }) %>
+
+<div class="page-heading">
+  <div><div class="eyebrow">SUBMISSION</div><h1><%= title %></h1><p><%= assignment.week %>주차 · <%= assignment.title %></p></div>
+  <a class="button button-secondary" href="/artist">홈으로</a>
+</div>
+
+<section class="section-card">
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <div class="assignment-card" style="margin-bottom:18px"><strong>과제 주제</strong><p class="muted-text" style="margin:5px 0 0"><%= assignment.topic %></p><p class="small-text muted-text" style="margin:8px 0 0">마감 <%= formatDateTime(assignment.due_at) %></p></div>
+  <form method="post" action="<%= submission?.id ? `/artist/submissions/${submission.id}` : '/artist/submissions' %>" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <input type="hidden" name="assignment_id" value="<%= assignment.id || submission?.assignment_id %>">
+    <div class="form-grid">
+      <label>업로드 날짜 *<input type="date" name="upload_date" value="<%= submission?.upload_date || '' %>" required></label>
+      <label>업로드 채널 *<select name="upload_channel" required><option value="">선택해주세요</option><% channels.forEach((channel) => { %><option value="<%= channel %>" <%= submission?.upload_channel === channel ? 'selected' : '' %>><%= channel %></option><% }) %></select></label>
+      <label class="full">게시물 URL *<input type="url" name="post_url" value="<%= submission?.post_url || '' %>" placeholder="https://..." required></label>
+    </div>
+    <p class="small-text muted-text">http:// 또는 https:// 게시물 링크를 입력해주세요. 마감 이후 제출도 가능하며 관리자 화면에 제출 시각이 기록됩니다.</p>
+    <div class="actions"><button class="button button-primary" type="submit"><%= submission?.id ? '수정 저장' : '제출하기' %></button><a class="button button-secondary" href="/artist">취소</a></div>
+  </form>
+</section>
+
+<%- include('../partials/artist-foot') %>

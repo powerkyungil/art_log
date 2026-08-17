@@ -1,0 +1,24 @@
+<%- include('../../partials/admin-head', { title }) %>
+
+<div class="page-heading">
+  <div><div class="eyebrow">ARTIST</div><h1><%= title %></h1><p>작가명이 로그인 아이디로 사용되며, 최초 비밀번호는 1234입니다.</p></div>
+  <a class="button button-secondary" href="/admin/artists">목록으로</a>
+</div>
+
+<section class="section-card">
+  <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+  <form method="post" action="<%= mode === 'create' ? '/admin/artists' : `/admin/artists/${artist.id}` %>" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <div class="form-grid">
+      <label>작가명 *<input type="text" name="name" value="<%= artist.name || '' %>" maxlength="100" required></label>
+      <label>연락처<input type="text" name="phone" value="<%= artist.phone || '' %>" maxlength="40"></label>
+      <label>SNS 계정<input type="text" name="sns_account" value="<%= artist.sns_account || '' %>" maxlength="255" placeholder="예: @account"></label>
+      <label>활동 상태<select name="status">
+        <% statuses.forEach((status) => { %><option value="<%= status %>" <%= artist.status === status ? 'selected' : '' %>><%= statusLabel(status) %></option><% }) %>
+      </select></label>
+    </div>
+    <div class="actions"><button class="button button-primary" type="submit"><%= mode === 'create' ? '작가 등록' : '수정 저장' %></button><a class="button button-secondary" href="/admin/artists">취소</a></div>
+  </form>
+</section>
+
+<%- include('../../partials/admin-foot') %>

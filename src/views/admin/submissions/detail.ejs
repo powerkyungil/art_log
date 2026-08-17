@@ -1,0 +1,31 @@
+<%- include('../../partials/admin-head', { title }) %>
+
+<div class="page-heading">
+  <div><div class="eyebrow">SUBMISSION DETAIL</div><h1>#<%= submission.id %> 제출 상세</h1><p><%= displayName(submission.artist_name) %> · <%= submission.week %>주차</p></div>
+  <a class="button button-secondary" href="/admin/submissions">목록으로</a>
+</div>
+
+<section class="section-card">
+  <div class="detail-grid">
+    <div class="detail-item"><span class="detail-label">작가</span><span class="detail-value"><a href="/admin/artists/<%= submission.artist_id %>"><%= displayName(submission.artist_name) %></a></span></div>
+    <div class="detail-item"><span class="detail-label">과제</span><span class="detail-value"><%= submission.week %>주차 · <%= submission.assignment_title %></span></div>
+    <div class="detail-item"><span class="detail-label">과제 주제</span><span class="detail-value"><%= submission.topic %></span></div>
+    <div class="detail-item"><span class="detail-label">업로드 날짜</span><span class="detail-value"><%= submission.upload_date %></span></div>
+    <div class="detail-item"><span class="detail-label">업로드 채널</span><span class="detail-value"><%= submission.upload_channel %></span></div>
+    <div class="detail-item"><span class="detail-label">제출일시</span><span class="detail-value"><%= formatDateTime(submission.submitted_at) %></span></div>
+    <div class="detail-item"><span class="detail-label">게시물 URL</span><span class="detail-value"><a href="<%= submission.post_url %>" target="_blank" rel="noopener noreferrer"><%= submission.post_url %></a></span></div>
+    <div class="detail-item"><span class="detail-label">현재 상태</span><span class="detail-value"><span class="badge badge-<%= statusClass(submission.status) %>"><%= statusLabel(submission.status) %></span></span></div>
+  </div>
+</section>
+
+<section class="section-card">
+  <h2>관리자 처리</h2>
+  <form method="post" action="/admin/submissions/<%= submission.id %>" class="stack-form">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <label>상태<select name="status"><option value="SUBMITTED" <%= submission.status === 'SUBMITTED' ? 'selected' : '' %>>제출</option><option value="CONFIRMED" <%= submission.status === 'CONFIRMED' ? 'selected' : '' %>>확인완료</option></select></label>
+    <label>관리자 메모<textarea name="admin_memo" placeholder="내부 메모"><%= submission.admin_memo || '' %></textarea></label>
+    <div class="actions"><button class="button button-primary" type="submit">저장</button></div>
+  </form>
+</section>
+
+<%- include('../../partials/admin-foot') %>

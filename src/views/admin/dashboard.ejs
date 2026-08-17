@@ -1,0 +1,45 @@
+<%- include('../partials/admin-head', { title }) %>
+
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">OVERVIEW</div>
+    <h1>전체 진행률</h1>
+    <p>작가별 전체 과제 진행률을 한눈에 확인할 수 있습니다.</p>
+  </div>
+  <div class="actions">
+    <a class="button button-secondary" href="/admin/progress">과제 진행 현황</a>
+    <a class="button button-primary" href="/admin/artists/new">작가 등록</a>
+  </div>
+</div>
+
+<section class="section-card progress-overview-card">
+  <div class="section-title">
+    <h2>작가별 전체 진행률</h2>
+    <span class="small-text muted-text">공개된 과제 기준</span>
+  </div>
+
+  <% if (!dashboard.assignments.length) { %>
+    <div class="empty-state">공개된 과제를 먼저 등록해주세요.</div>
+  <% } else if (!dashboard.artists.length) { %>
+    <div class="empty-state">표시할 작가가 없습니다.</div>
+  <% } else { %>
+    <div class="progress-overview-list">
+      <% dashboard.artists.forEach((artist) => { %>
+        <div class="progress-overview-row">
+          <div class="progress-overview-artist">
+            <a href="/admin/artists/<%= artist.id %>"><strong><%= displayName(artist.name) %></strong></a>
+          </div>
+          <div class="progress-overview-track">
+            <div class="progress-cell">
+              <div class="progress" title="<%= artist.progressRate %>%"><div class="progress-bar" style="width:<%= artist.progressRate %>%"></div></div>
+              <span class="small-text"><%= artist.progressRate %>%</span>
+            </div>
+          </div>
+          <a class="button button-secondary button-small" href="/admin/progress?search=<%= encodeURIComponent(artist.name) %>">상세 보기</a>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/admin-foot') %>

@@ -1,0 +1,14 @@
+<%- include('../../partials/admin-head', { title }) %>
+
+<div class="page-heading">
+  <div>
+    <div class="eyebrow">ASSIGNMENT PROGRESS</div>
+    <h1>과제 진행 현황</h1>
+    <p>관리 월을 선택해 주차별 작가 과제의 제출 상태를 확인합니다.</p>
+  </div>
+  <a class="button button-secondary" href="/admin/dashboard">대시보드</a>
+</div>
+
+<%- include('../partials/assignment-progress', { dashboard, month }) %>
+
+<%- include('../../partials/admin-foot') %>

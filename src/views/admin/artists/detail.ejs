@@ -1,0 +1,40 @@
+<%- include('../../partials/admin-head', { title }) %>
+
+<div class="page-heading">
+  <div><div class="eyebrow">ARTIST DETAIL</div><h1><%= displayName(artist.name) %></h1><p>작가 로그인 정보와 제출 내역입니다.</p></div>
+  <div class="actions"><a class="button button-secondary" href="/admin/artists/<%= artist.id %>/edit">수정</a><a class="button button-secondary" href="/admin/artists">목록</a></div>
+</div>
+
+<section class="section-card">
+  <div class="section-title"><h2>기본 정보</h2><span class="badge badge-<%= statusClass(artist.status) %>"><%= statusLabel(artist.status) %></span></div>
+  <div class="detail-grid">
+    <div class="detail-item"><span class="detail-label">작가명</span><span class="detail-value"><%= displayName(artist.name) %></span></div>
+    <div class="detail-item"><span class="detail-label">로그인 아이디</span><span class="detail-value"><%= artist.name %></span></div>
+    <div class="detail-item"><span class="detail-label">연락처</span><span class="detail-value"><%= artist.phone || '-' %></span></div>
+    <div class="detail-item"><span class="detail-label">SNS 계정</span><span class="detail-value"><%= artist.sns_account || '-' %></span></div>
+    <div class="detail-item"><span class="detail-label">등록일</span><span class="detail-value"><%= formatDateTime(artist.created_at) %></span></div>
+  </div>
+  <p class="small-text muted-text" style="margin:18px 0 0">초기 비밀번호는 1234이며, 작가가 변경한 비밀번호는 확인할 수 없습니다.</p>
+  <form method="post" action="/admin/artists/<%= artist.id %>/reset-password" class="actions" style="margin-top:12px">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+    <button class="button button-secondary" type="submit" data-confirm="작가 비밀번호를 1234로 초기화할까요?">비밀번호를 1234로 초기화</button>
+  </form>
+</section>
+
+<section class="section-card">
+  <div class="section-title"><h2>활동 내역</h2><span class="muted-text small-text"><%= activity.filter((item) => item.submission_id).length %>건 제출</span></div>
+  <% if (!activity.length) { %><div class="empty-state">공개된 과제가 없습니다.</div><% } else { %>
+    <div class="table-wrap"><table>
+      <thead><tr><th>주차</th><th>과제</th><th>업로드 날짜</th><th>채널</th><th>상태</th><th>게시물</th></tr></thead>
+      <tbody>
+        <% activity.forEach((item) => { %><tr>
+          <td><%= item.week %>주차</td><td><%= item.title %></td><td><%= item.upload_date || '-' %></td><td><%= item.upload_channel || '-' %></td>
+          <td><span class="badge badge-<%= statusClass(item.status || 'NOT_SUBMITTED') %>"><%= statusLabel(item.status || 'NOT_SUBMITTED') %></span></td>
+          <td><% if (item.post_url) { %><a href="<%= item.post_url %>" target="_blank" rel="noopener noreferrer">URL 보기</a><% } else { %>-<% } %></td>
+        </tr><% }) %>
+      </tbody>
+    </table></div>
+  <% } %>
+</section>
+
+<%- include('../../partials/admin-foot') %>

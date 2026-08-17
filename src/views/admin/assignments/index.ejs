@@ -1,0 +1,34 @@
+<%- include('../../partials/admin-head', { title }) %>
+
+<div class="page-heading">
+  <div><div class="eyebrow">ASSIGNMENTS</div><h1>과제 관리</h1><p>관리 월별 과제와 공개 상태를 관리합니다.</p></div>
+  <a class="button button-primary" href="/admin/assignments/new">과제 등록</a>
+</div>
+
+<section class="section-card">
+  <form method="get" action="/admin/assignments" class="filters">
+    <label>관리 월<input type="month" name="month" value="<%= month %>" required></label>
+    <button class="button button-secondary" type="submit">조회</button>
+  </form>
+  <% if (!assignments.length) { %><div class="empty-state">등록된 과제가 없습니다.</div><% } else { %>
+    <div class="table-wrap"><table>
+      <thead><tr><th>주차</th><th>과제</th><th>주제</th><th>제출 기간</th><th>대상 작가</th><th>공개</th><th></th></tr></thead>
+      <tbody>
+        <% assignments.forEach((assignment) => { %><tr>
+          <td><strong><%= assignment.week %>주차</strong></td>
+          <td><strong><%= assignment.title %></strong><br><span class="muted-text small-text"><%= assignment.description || '' %></span></td>
+          <td><%= assignment.topic %></td>
+          <td><%= formatDateTime(assignment.start_at) %><br>~ <%= formatDateTime(assignment.due_at) %></td>
+          <td><%= assignment.target_scope === 'ALL' ? '전체 작가' : `${assignment.target_count}명 지정` %></td>
+          <td><span class="badge badge-<%= assignment.is_visible ? 'success' : 'muted' %>"><%= assignment.is_visible ? '공개' : '비공개' %></span></td>
+          <td><div class="actions">
+            <a class="button button-secondary button-small" href="/admin/assignments/<%= assignment.id %>/edit">수정</a>
+            <form method="post" action="/admin/assignments/<%= assignment.id %>/toggle" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button-secondary button-small" type="submit"><%= assignment.is_visible ? '비공개' : '공개' %></button></form>
+          </div></td>
+        </tr><% }) %>
+      </tbody>
+    </table></div>
+  <% } %>
+</section>
+
+<%- include('../../partials/admin-foot') %>
