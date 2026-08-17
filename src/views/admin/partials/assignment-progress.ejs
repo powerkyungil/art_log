@@ -10,7 +10,7 @@
     if (artist.assignments instanceof Map) return [...artist.assignments.values()];
     return [];
   }; %>
-  <% const emptyAssignmentStatus = { status: 'NOT_SUBMITTED', submittedAt: null, postUrl: null }; %>
+  <% const emptyAssignmentStatus = { status: 'NOT_SUBMITTED', submittedAt: null, postUrl: null, postUrls: [] }; %>
 
   <% if (!dashboard.assignments.length) { %>
     <div class="empty-state">공개된 미션을 먼저 등록해주세요.</div>
@@ -66,11 +66,10 @@
                         <span class="small-text muted-text">아직 제출하지 않았습니다.</span>
                       <% } %>
                     </div>
-                    <% if (assignmentStatus.postUrl) { %>
-                      <a class="badge badge-<%= statusClass(assignmentStatus.status) %>" href="<%= assignmentStatus.postUrl %>" target="_blank" rel="noopener noreferrer"><%= completed ? '완료 · 게시물 보기' : statusLabel(assignmentStatus.status) %></a>
-                    <% } else { %>
+                    <div class="mission-artist-actions">
                       <span class="badge badge-<%= statusClass(assignmentStatus.status) %>"><%= completed ? '완료' : '미완료' %></span>
-                    <% } %>
+                      <% if (assignmentStatus.postUrls?.length) { %><%- include('../../partials/submission-urls', { urls: assignmentStatus.postUrls, compact: true }) %><% } %>
+                    </div>
                   </div>
                 <% }) %>
               </div>

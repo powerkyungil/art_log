@@ -66,6 +66,23 @@ database.exec(`
 // 모든 기존 미션도 현재 정책에 맞춰 활동중인 전체 작가의 공통 미션으로 전환합니다.
 database.exec("UPDATE assignments SET target_scope = 'ALL'");
 database.exec('DELETE FROM assignment_artists');
+
+database.exec(`
+  CREATE TABLE IF NOT EXISTS submission_urls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE (submission_id, url),
+    FOREIGN KEY (submission_id) REFERENCES submissions (id) ON UPDATE CASCADE ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_submission_urls_submission ON submission_urls (submission_id, sort_order, id);
+  INSERT OR IGNORE INTO submission_urls (submission_id, url, sort_order)
+  SELECT id, post_url, 0
+  FROM submissions
+  WHERE post_url IS NOT NULL AND trim(post_url) <> '';
+`);
 console.log(`SQLite schema is ready: ${config.db.file}`);
 database.close();
 

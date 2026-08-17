@@ -1,0 +1,9 @@
+<% if (urls?.length) { %>
+  <div class="submission-url-links <%= compact ? 'compact' : '' %>">
+    <% urls.forEach((url, index) => { %>
+      <a href="<%= url %>" target="_blank" rel="noopener noreferrer" title="<%= url %>"><%= compact ? `URL ${index + 1}` : url %></a>
+    <% }) %>
+  </div>
+<% } else { %>
+  -
+<% } %>

@@ -18,6 +18,25 @@ function renderArtistError(res, view, data, message) {
   return res.status(422).render(view, { ...data, error: message });
 }
 
+function normalizeSubmissionBody(body) {
+  const rawPostUrls = Array.isArray(body.post_url) ? body.post_url : [body.post_url];
+  const postUrls = [...new Set(rawPostUrls.map(required).filter(Boolean))];
+  return {
+    upload_date: required(body.upload_date),
+    upload_channel: required(body.upload_channel),
+    post_url: postUrls[0] || '',
+    post_urls: postUrls
+  };
+}
+
+function toRepositorySubmission(form) {
+  return {
+    uploadDate: form.upload_date,
+    uploadChannel: form.upload_channel,
+    postUrls: form.post_urls
+  };
+}
+
 export const artistController = {
   landing(req, res) {
     if (req.session.artistId && req.session.artistAuthVersion) return res.redirect('/artist');
@@ -118,11 +137,7 @@ export const artistController = {
 
   async createSubmission(req, res) {
     const assignment = await assignmentRepository.findByIdForArtist(req.body.assignment_id, req.artist.id);
-    const form = {
-      upload_date: required(req.body.upload_date),
-      upload_channel: required(req.body.upload_channel),
-      post_url: required(req.body.post_url)
-    };
+    const form = normalizeSubmissionBody(req.body);
     if (!assignment) return res.status(404).render('error', { title: '미션을 찾을 수 없습니다', message: '존재하지 않거나 제출할 수 없는 미션입니다.' });
     if (new Date(assignment.start_at).getTime() > Date.now()) return res.status(422).render('error', { title: '아직 제출할 수 없습니다', message: '제출 시작일 이후에 제출할 수 있습니다.' });
     const error = validateSubmission(form);
@@ -131,7 +146,7 @@ export const artistController = {
     const existing = await submissionRepository.findByArtistAndAssignment(req.artist.id, assignment.id);
     if (existing) {
       if (existing.status === 'CONFIRMED') return res.status(422).render('error', { title: '수정할 수 없습니다', message: '관리자 확인완료 후에는 수정할 수 없습니다.' });
-      await submissionRepository.updateByArtist(existing.id, req.artist.id, form);
+      await submissionRepository.updateByArtist(existing.id, req.artist.id, toRepositorySubmission(form));
       req.flash('success', '제출 내용이 수정되었습니다.');
       return res.redirect(`/artist/submissions/${existing.id}/success`);
     }
@@ -139,9 +154,7 @@ export const artistController = {
     const submission = await submissionRepository.create({
       artistId: req.artist.id,
       assignmentId: assignment.id,
-      uploadDate: form.upload_date,
-      uploadChannel: form.upload_channel,
-      postUrl: form.post_url
+      ...toRepositorySubmission(form)
     });
     req.flash('success', '미션이 제출되었습니다.');
     return res.redirect(`/artist/submissions/${submission.id}/success`);
@@ -177,18 +190,14 @@ export const artistController = {
 
   async update(req, res) {
     const submission = await submissionRepository.findById(req.params.id);
-    const form = {
-      upload_date: required(req.body.upload_date),
-      upload_channel: required(req.body.upload_channel),
-      post_url: required(req.body.post_url)
-    };
+    const form = normalizeSubmissionBody(req.body);
     if (!submission || submission.artist_id !== req.artist.id) return res.status(404).render('error', { title: '제출 내역을 찾을 수 없습니다', message: '본인의 제출 내역만 수정할 수 있습니다.' });
     const assignment = await assignmentRepository.findByIdForArtist(submission.assignment_id, req.artist.id);
     if (!assignment) return res.status(422).render('error', { title: '수정할 수 없습니다', message: '현재 수정할 수 없는 미션입니다.' });
     if (submission.status === 'CONFIRMED') return res.status(422).render('error', { title: '수정할 수 없습니다', message: '관리자 확인완료 후에는 수정할 수 없습니다.' });
     const error = validateSubmission(form);
-    if (error) return renderArtistError(res, 'artist/submission-form', { title: '제출 내용 수정', assignment: submission, submission: form, channels: CHANNELS }, error);
-    await submissionRepository.updateByArtist(submission.id, req.artist.id, form);
+    if (error) return renderArtistError(res, 'artist/submission-form', { title: '제출 내용 수정', assignment, submission: form, channels: CHANNELS }, error);
+    await submissionRepository.updateByArtist(submission.id, req.artist.id, toRepositorySubmission(form));
     req.flash('success', '제출 내용이 수정되었습니다.');
     return res.redirect(`/artist/submissions/${submission.id}/success`);
   }
@@ -197,6 +206,8 @@ export const artistController = {
 function validateSubmission(form) {
   if (!isValidDate(form.upload_date)) return '업로드 날짜를 올바르게 입력해주세요.';
   if (!CHANNELS.includes(form.upload_channel)) return '업로드 채널을 선택해주세요.';
-  if (!isValidUrl(form.post_url)) return 'http:// 또는 https://로 시작하는 URL을 입력해주세요.';
+  if (!form.post_urls.length) return '게시물 URL을 한 개 이상 입력해주세요.';
+  const invalidUrlIndex = form.post_urls.findIndex((url) => !isValidUrl(url));
+  if (invalidUrlIndex >= 0) return `${invalidUrlIndex + 1}번째 URL은 http:// 또는 https://로 시작해야 합니다.`;
   return null;
 }

@@ -20,7 +20,7 @@
           <td><a href="/admin/submissions/<%= submission.id %>">#<%= submission.id %></a></td>
           <td><a href="/admin/artists/<%= submission.artist_id %>"><%= displayName(submission.artist_name) %></a></td>
           <td>미션 <%= submission.round_no %></td><td><%= submission.upload_date %></td><td><%= submission.upload_channel %></td><td><%= submission.topic %></td>
-          <td><a href="<%= submission.post_url %>" target="_blank" rel="noopener noreferrer">URL 보기</a></td>
+          <td><%- include('../../partials/submission-urls', { urls: submission.post_urls, compact: true }) %></td>
           <td><span class="badge badge-<%= statusClass(submission.status) %>"><%= statusLabel(submission.status) %></span></td>
         </tr><% }) %>
       </tbody>

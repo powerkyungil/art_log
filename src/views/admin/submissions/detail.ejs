@@ -13,7 +13,7 @@
     <div class="detail-item"><span class="detail-label">업로드 날짜</span><span class="detail-value"><%= submission.upload_date %></span></div>
     <div class="detail-item"><span class="detail-label">업로드 채널</span><span class="detail-value"><%= submission.upload_channel %></span></div>
     <div class="detail-item"><span class="detail-label">제출일시</span><span class="detail-value"><%= formatDateTime(submission.submitted_at) %></span></div>
-    <div class="detail-item"><span class="detail-label">게시물 URL</span><span class="detail-value"><a href="<%= submission.post_url %>" target="_blank" rel="noopener noreferrer"><%= submission.post_url %></a></span></div>
+    <div class="detail-item full"><span class="detail-label">게시물 URL</span><span class="detail-value"><%- include('../../partials/submission-urls', { urls: submission.post_urls, compact: false }) %></span></div>
     <div class="detail-item"><span class="detail-label">현재 상태</span><span class="detail-value"><span class="badge badge-<%= statusClass(submission.status) %>"><%= statusLabel(submission.status) %></span></span></div>
   </div>
 </section>

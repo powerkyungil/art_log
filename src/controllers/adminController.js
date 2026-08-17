@@ -35,6 +35,7 @@ function buildDashboard(rows, assignments, query) {
       applicable,
       status: applicable ? row.status || 'NOT_SUBMITTED' : 'NOT_APPLICABLE',
       postUrl: row.post_url,
+      postUrls: row.post_urls || [],
       submittedAt: row.submitted_at
     });
   }
@@ -66,7 +67,8 @@ function buildDashboard(rows, assignments, query) {
       roundNo: assignment.round_no,
       applicable: false,
       status: 'NOT_APPLICABLE',
-      postUrl: null
+      postUrl: null,
+      postUrls: []
     });
     const applicableAssignments = targetAssignments.filter((assignment) => artist.assignments.get(assignment.id)?.applicable);
     const submittedCount = applicableAssignments.filter((assignment) => {

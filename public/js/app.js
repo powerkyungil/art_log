@@ -49,4 +49,37 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  document.querySelectorAll('[data-submission-url-list]').forEach((list) => {
+    const form = list.closest('form');
+    const template = form?.querySelector('[data-submission-url-template]');
+    const addButton = form?.querySelector('[data-add-submission-url]');
+    const updateLabels = () => {
+      list.querySelectorAll('[data-submission-url]').forEach((row, index) => {
+        const label = row.querySelector('[data-submission-url-label]');
+        if (label) label.textContent = `게시물 URL ${index + 1}`;
+      });
+    };
+    const bindRemove = (row) => {
+      row.querySelector('[data-remove-submission-url]')?.addEventListener('click', () => {
+        const rows = list.querySelectorAll('[data-submission-url]');
+        if (rows.length === 1) {
+          row.querySelector('input').value = '';
+          return;
+        }
+        row.remove();
+        updateLabels();
+      });
+    };
+
+    list.querySelectorAll('[data-submission-url]').forEach(bindRemove);
+    addButton?.addEventListener('click', () => {
+      if (!template) return;
+      list.append(template.content.cloneNode(true));
+      const addedRow = list.lastElementChild;
+      bindRemove(addedRow);
+      updateLabels();
+      addedRow.querySelector('input')?.focus();
+    });
+  });
+
 });

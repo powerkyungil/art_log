@@ -149,12 +149,21 @@ tr:last-child td { border-bottom: 0; }
 .mission-artist-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 .mission-artist-main { display: grid; min-width: 0; gap: 3px; }
 .mission-artist-main strong { display: block; }
+.mission-artist-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 7px; }
 .assignment-list { display: grid; gap: 8px; padding-top: 12px; }
 .assignment-list-item { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 14px; border: 1px solid var(--line); border-radius: 6px; background: #fff; }
 .assignment-list-main { display: grid; min-width: 0; gap: 3px; }
 .assignment-list-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .url-box { display: flex; gap: 8px; align-items: center; }
 .url-box input { min-width: 0; }
+.submission-urls-field { display: grid; gap: 8px; }
+.submission-url-list { display: grid; gap: 8px; }
+.submission-url-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: #fafafa; }
+.submission-url-add { justify-self: start; }
+.submission-url-links { display: grid; gap: 5px; min-width: 0; }
+.submission-url-links a { overflow-wrap: anywhere; }
+.submission-url-links.compact { display: flex; flex-wrap: wrap; gap: 5px; }
+.submission-url-links.compact a { display: inline-flex; padding: 3px 7px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: .78rem; white-space: nowrap; }
 .notice-list { display: grid; gap: 10px; }
 .notice-item { padding: 15px; border: 1px solid var(--line); border-radius: 9px; background: #fff; }
 .notice-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 7px; }
@@ -205,6 +214,7 @@ tr:last-child td { border-bottom: 0; }
   .mission-overview { margin: 12px; }
   .mission-artists { padding: 0 12px 12px; }
   .mission-artist-row { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .mission-artist-actions { justify-content: flex-start; }
   .assignment-list-item { align-items: flex-start; flex-direction: column; gap: 9px; }
   .progress-overview-row { grid-template-columns: 1fr; gap: 10px; }
   .progress-overview-row .button { width: 100%; }
@@ -221,5 +231,7 @@ tr:last-child td { border-bottom: 0; }
   .filters .button { width: 100%; }
   .url-box { align-items: stretch; flex-direction: column; }
   .url-box .button { width: 100%; }
+  .submission-url-row { grid-template-columns: 1fr; }
+  .submission-url-row .button, .submission-url-add { width: 100%; }
   .activity-row { align-items: flex-start; flex-direction: column; }
 }

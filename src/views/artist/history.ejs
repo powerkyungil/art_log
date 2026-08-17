@@ -12,7 +12,7 @@
       <tbody>
         <% activity.forEach((item) => { %><tr>
           <td>미션 <%= item.round_no %></td><td><%= item.title %></td><td><%= item.upload_date || '-' %></td><td><%= item.upload_channel || '-' %></td>
-          <td><% if (item.post_url) { %><a href="<%= item.post_url %>" target="_blank" rel="noopener noreferrer">보기</a><% } else { %>-<% } %></td>
+          <td><%- include('../partials/submission-urls', { urls: item.post_urls, compact: true }) %></td>
           <td><span class="badge badge-<%= statusClass(item.status || 'NOT_SUBMITTED') %>"><%= statusLabel(item.status || 'NOT_SUBMITTED') %></span></td>
           <td><% if (item.submission_id && item.status !== 'CONFIRMED') { %><a class="button button-secondary button-small" href="/artist/submissions/<%= item.submission_id %>/edit">수정</a><% } else if (!item.submission_id && item.start_at && new Date(item.start_at).getTime() <= Date.now()) { %><a class="button button-primary button-small" href="/artist/submissions/new?assignment_id=<%= item.assignment_id %>">제출</a><% } %></td>
         </tr><% }) %>

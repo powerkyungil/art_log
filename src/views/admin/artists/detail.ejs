@@ -36,7 +36,7 @@
         <% activity.forEach((item) => { %><tr>
           <td>미션 <%= item.round_no %></td><td><%= item.title %></td><td><%= item.upload_date || '-' %></td><td><%= item.upload_channel || '-' %></td>
           <td><span class="badge badge-<%= statusClass(item.status || 'NOT_SUBMITTED') %>"><%= statusLabel(item.status || 'NOT_SUBMITTED') %></span></td>
-          <td><% if (item.post_url) { %><a href="<%= item.post_url %>" target="_blank" rel="noopener noreferrer">URL 보기</a><% } else { %>-<% } %></td>
+          <td><%- include('../../partials/submission-urls', { urls: item.post_urls, compact: true }) %></td>
         </tr><% }) %>
       </tbody>
     </table></div>

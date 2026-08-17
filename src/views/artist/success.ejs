@@ -6,7 +6,7 @@
   <p class="muted-text">관리자가 제출 내용을 확인하면 상태가 확인완료로 변경됩니다.</p>
   <div class="detail-item" style="text-align:left"><span class="detail-label">업로드 채널</span><span class="detail-value"><%= submission.upload_channel %></span></div>
   <div class="detail-item" style="text-align:left"><span class="detail-label">업로드 날짜</span><span class="detail-value"><%= submission.upload_date %></span></div>
-  <div class="detail-item" style="text-align:left"><span class="detail-label">게시물 URL</span><span class="detail-value"><a href="<%= submission.post_url %>" target="_blank" rel="noopener noreferrer"><%= submission.post_url %></a></span></div>
+  <div class="detail-item" style="text-align:left"><span class="detail-label">게시물 URL</span><span class="detail-value"><%- include('../partials/submission-urls', { urls: submission.post_urls, compact: false }) %></span></div>
   <div class="actions" style="justify-content:center; margin-top:20px"><% if (submission.status !== 'CONFIRMED') { %><a class="button button-secondary" href="/artist/submissions/<%= submission.id %>/edit">제출 내용 수정</a><% } %><a class="button button-primary" href="/artist/submissions">내 활동 내역</a></div>
 </section>
 

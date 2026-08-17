@@ -1,5 +1,45 @@
-import { pool } from '../db/pool.js';
+import { pool, withTransaction } from '../db/pool.js';
 import { nowSql } from '../utils/format.js';
+
+async function attachPostUrls(rows, idColumn = 'id') {
+  const submissionIds = [...new Set(rows
+    .map((row) => Number(row[idColumn]))
+    .filter((id) => Number.isInteger(id) && id > 0))];
+  const urlsBySubmission = new Map();
+
+  if (submissionIds.length) {
+    const placeholders = submissionIds.map(() => '?').join(', ');
+    const [urlRows] = await pool.execute(
+      `SELECT submission_id, url
+       FROM submission_urls
+       WHERE submission_id IN (${placeholders})
+       ORDER BY submission_id ASC, sort_order ASC, id ASC`,
+      submissionIds
+    );
+    urlRows.forEach((row) => {
+      if (!urlsBySubmission.has(row.submission_id)) urlsBySubmission.set(row.submission_id, []);
+      urlsBySubmission.get(row.submission_id).push(row.url);
+    });
+  }
+
+  return rows.map((row) => {
+    const urls = urlsBySubmission.get(Number(row[idColumn])) || [];
+    return {
+      ...row,
+      post_urls: urls.length ? urls : row.post_url ? [row.post_url] : []
+    };
+  });
+}
+
+async function replacePostUrls(connection, submissionId, postUrls) {
+  await connection.execute('DELETE FROM submission_urls WHERE submission_id = ?', [submissionId]);
+  for (const [index, url] of postUrls.entries()) {
+    await connection.execute(
+      'INSERT INTO submission_urls (submission_id, url, sort_order) VALUES (?, ?, ?)',
+      [submissionId, url, index]
+    );
+  }
+}
 
 export const submissionRepository = {
   async findById(id) {
@@ -14,7 +54,8 @@ export const submissionRepository = {
        WHERE s.id = ? LIMIT 1`,
       [id]
     );
-    return rows[0] || null;
+    const submissions = await attachPostUrls(rows);
+    return submissions[0] || null;
   },
 
   async findByArtistAndAssignment(artistId, assignmentId) {
@@ -24,7 +65,8 @@ export const submissionRepository = {
        WHERE s.artist_id = ? AND s.assignment_id = ? LIMIT 1`,
       [artistId, assignmentId]
     );
-    return rows[0] || null;
+    const submissions = await attachPostUrls(rows);
+    return submissions[0] || null;
   },
 
   async listForArtist(artistId) {
@@ -38,16 +80,19 @@ export const submissionRepository = {
        ORDER BY ass.round_no ASC, ass.start_at ASC, ass.id ASC`,
       [artistId]
     );
-    return rows;
+    return attachPostUrls(rows, 'submission_id');
   },
 
   async list({ search = '', status = '', assignmentId = '', channel = '' } = {}) {
     const conditions = [];
     const params = [];
     if (search) {
-      conditions.push('(a.name LIKE ? OR s.post_url LIKE ?)');
+      conditions.push(`(a.name LIKE ? OR s.post_url LIKE ? OR EXISTS (
+        SELECT 1 FROM submission_urls su_search
+        WHERE su_search.submission_id = s.id AND su_search.url LIKE ?
+      ))`);
       const keyword = `%${search}%`;
-      params.push(keyword, keyword);
+      params.push(keyword, keyword, keyword);
     }
     if (status) {
       conditions.push('s.status = ?');
@@ -72,26 +117,33 @@ export const submissionRepository = {
        ORDER BY s.submitted_at DESC, s.id DESC`,
       params
     );
-    return rows;
+    return attachPostUrls(rows);
   },
 
-  async create({ artistId, assignmentId, uploadDate, uploadChannel, postUrl }) {
+  async create({ artistId, assignmentId, uploadDate, uploadChannel, postUrls }) {
     const timestamp = nowSql();
-    const [result] = await pool.execute(
-      `INSERT INTO submissions
-       (artist_id, assignment_id, upload_date, upload_channel, post_url, status, submitted_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'SUBMITTED', ?, ?, ?)`,
-      [artistId, assignmentId, uploadDate, uploadChannel, postUrl, timestamp, timestamp, timestamp]
-    );
-    return this.findById(result.insertId);
+    const submissionId = await withTransaction(async (connection) => {
+      const [result] = await connection.execute(
+        `INSERT INTO submissions
+         (artist_id, assignment_id, upload_date, upload_channel, post_url, status, submitted_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 'SUBMITTED', ?, ?, ?)`,
+        [artistId, assignmentId, uploadDate, uploadChannel, postUrls[0], timestamp, timestamp, timestamp]
+      );
+      await replacePostUrls(connection, result.insertId, postUrls);
+      return result.insertId;
+    });
+    return this.findById(submissionId);
   },
 
-  async updateByArtist(id, artistId, { uploadDate, uploadChannel, postUrl }) {
-    await pool.execute(
-      `UPDATE submissions SET upload_date = ?, upload_channel = ?, post_url = ?, status = 'SUBMITTED',
-       confirmed_at = NULL, confirmed_by = NULL, updated_at = ? WHERE id = ? AND artist_id = ? AND status <> 'CONFIRMED'`,
-      [uploadDate, uploadChannel, postUrl, nowSql(), id, artistId]
-    );
+  async updateByArtist(id, artistId, { uploadDate, uploadChannel, postUrls }) {
+    await withTransaction(async (connection) => {
+      const [result] = await connection.execute(
+        `UPDATE submissions SET upload_date = ?, upload_channel = ?, post_url = ?, status = 'SUBMITTED',
+         confirmed_at = NULL, confirmed_by = NULL, updated_at = ? WHERE id = ? AND artist_id = ? AND status <> 'CONFIRMED'`,
+        [uploadDate, uploadChannel, postUrls[0], nowSql(), id, artistId]
+      );
+      if (result.affectedRows) await replacePostUrls(connection, id, postUrls);
+    });
     return this.findById(id);
   },
 
@@ -136,6 +188,6 @@ export const submissionRepository = {
        WHERE ${conditions.join(' AND ')}
        ORDER BY a.name ASC, ass.round_no ASC, ass.start_at ASC, ass.id ASC`
     );
-    return rows;
+    return attachPostUrls(rows, 'submission_id');
   }
 };
