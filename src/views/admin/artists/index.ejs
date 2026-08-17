@@ -15,7 +15,15 @@
     <button class="button button-secondary" type="submit">검색</button>
   </form>
   <% if (!artists.length) { %><div class="empty-state">등록된 작가가 없습니다.</div><% } else { %>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="artist-table">
+      <colgroup>
+        <col class="artist-col-name">
+        <col class="artist-col-phone">
+        <col class="artist-col-url">
+        <col class="artist-col-status">
+        <col class="artist-col-date">
+        <col class="artist-col-actions">
+      </colgroup>
       <thead><tr><th>작가</th><th>연락처</th><th>플랫폼 URL</th><th>상태</th><th>등록일</th><th></th></tr></thead>
       <tbody>
         <% artists.forEach((artist) => { %>
@@ -25,7 +33,7 @@
             <td class="artist-url-cell">
               <% if (artist.links?.length) { %>
                 <div class="artist-link-summary">
-                  <% artist.links.forEach((link) => { %><div class="artist-link-summary-item"><span class="badge badge-info"><%= link.platform %></span><a href="<%= link.url %>" target="_blank" rel="noopener noreferrer"><%= link.url %></a></div><% }) %>
+                  <% artist.links.forEach((link) => { %><div class="artist-link-summary-item"><span class="badge badge-info"><%= link.platform %></span><a href="<%= link.url %>" target="_blank" rel="noopener noreferrer" title="<%= link.url %>"><%= link.url %></a></div><% }) %>
                 </div>
               <% } else { %>-<% } %>
             </td>

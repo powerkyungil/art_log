@@ -14,7 +14,7 @@
     <div class="detail-item full"><span class="detail-label">플랫폼 URL</span><span class="detail-value">
       <% if (artist.links?.length) { %>
         <div class="artist-link-summary">
-          <% artist.links.forEach((link) => { %><div class="artist-link-summary-item"><span class="badge badge-info"><%= link.platform %></span><a href="<%= link.url %>" target="_blank" rel="noopener noreferrer"><%= link.url %></a></div><% }) %>
+          <% artist.links.forEach((link) => { %><div class="artist-link-summary-item"><span class="badge badge-info"><%= link.platform %></span><a href="<%= link.url %>" target="_blank" rel="noopener noreferrer" title="<%= link.url %>"><%= link.url %></a></div><% }) %>
         </div>
       <% } else { %>-<% } %>
     </span></div>
