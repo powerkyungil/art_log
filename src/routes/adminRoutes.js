@@ -30,6 +30,7 @@ router.post('/artists', asyncHandler(adminController.createArtist));
 router.get('/artists/:id/edit', asyncHandler(adminController.showArtistEdit));
 router.post('/artists/:id', asyncHandler(adminController.updateArtist));
 router.post('/artists/:id/reset-password', asyncHandler(adminController.resetArtistPassword));
+router.post('/artists/:id/delete', asyncHandler(adminController.deleteArtist));
 router.get('/artists/:id', asyncHandler(adminController.artistDetail));
 
 router.get('/assignments', asyncHandler(adminController.assignments));

@@ -1,25 +1,28 @@
-import { pool } from '../db/pool.js';
+import { pool, withTransaction } from '../db/pool.js';
 
 export const artistRepository = {
   async list({ search = '', status = '' } = {}) {
     const conditions = [];
     const params = [];
     if (search) {
-      conditions.push('(name LIKE ? OR phone LIKE ? OR sns_account LIKE ?)');
+      conditions.push(`(a.name LIKE ? OR a.phone LIKE ? OR a.sns_account LIKE ? OR EXISTS (
+        SELECT 1 FROM artist_links al
+        WHERE al.artist_id = a.id AND (al.platform LIKE ? OR al.url LIKE ?)
+      ))`);
       const keyword = `%${search}%`;
-      params.push(keyword, keyword, keyword);
+      params.push(keyword, keyword, keyword, keyword, keyword);
     }
     if (status) {
-      conditions.push('status = ?');
+      conditions.push('a.status = ?');
       params.push(status);
     }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const [rows] = await pool.execute(
-      `SELECT id, name, phone, sns_account, access_token_version, status, created_at, updated_at
-       FROM artists ${where} ORDER BY name ASC, id DESC`,
+      `SELECT a.id, a.name, a.phone, a.sns_account, a.access_token_version, a.status, a.created_at, a.updated_at
+       FROM artists a ${where} ORDER BY a.name ASC, a.id DESC`,
       params
     );
-    return rows;
+    return attachLinks(rows);
   },
 
   async findById(id) {
@@ -27,7 +30,7 @@ export const artistRepository = {
       'SELECT * FROM artists WHERE id = ? LIMIT 1',
       [id]
     );
-    return rows[0] || null;
+    return attachArtist(rows[0]);
   },
 
   async findByName(name) {
@@ -35,7 +38,7 @@ export const artistRepository = {
       'SELECT * FROM artists WHERE name = ? ORDER BY id ASC LIMIT 1',
       [name]
     );
-    return rows[0] || null;
+    return attachArtist(rows[0]);
   },
 
   async findOtherByName(name, id) {
@@ -46,21 +49,28 @@ export const artistRepository = {
     return rows[0] || null;
   },
 
-  async create({ name, phone, snsAccount, status, tokenHash, passwordHash }) {
-    const [result] = await pool.execute(
-      `INSERT INTO artists (name, password_hash, phone, sns_account, status, access_token_hash)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [name, passwordHash, phone || null, snsAccount || null, status || 'ACTIVE', tokenHash]
-    );
-    return this.findById(result.insertId);
+  async create({ name, phone, snsAccount, status, tokenHash, passwordHash, links = [] }) {
+    const artistId = await withTransaction(async (connection) => {
+      const [result] = connection.execute(
+        `INSERT INTO artists (name, password_hash, phone, sns_account, status, access_token_hash)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [name, passwordHash, phone || null, snsAccount || null, status || 'ACTIVE', tokenHash]
+      );
+      replaceLinks(connection, result.insertId, links);
+      return result.insertId;
+    });
+    return this.findById(artistId);
   },
 
-  async update(id, { name, phone, snsAccount, status }) {
-    await pool.execute(
-      `UPDATE artists SET name = ?, phone = ?, sns_account = ?, status = ?,
-       updated_at = datetime('now', 'localtime') WHERE id = ?`,
-      [name, phone || null, snsAccount || null, status, id]
-    );
+  async update(id, { name, phone, snsAccount, status, links = [] }) {
+    await withTransaction(async (connection) => {
+      connection.execute(
+        `UPDATE artists SET name = ?, phone = ?, sns_account = ?, status = ?,
+         updated_at = datetime('now', 'localtime') WHERE id = ?`,
+        [name, phone || null, snsAccount || null, status, id]
+      );
+      replaceLinks(connection, id, links);
+    });
     return this.findById(id);
   },
 
@@ -71,6 +81,16 @@ export const artistRepository = {
       [passwordHash, id]
     );
     return this.findById(id);
+  },
+
+  async delete(id) {
+    return withTransaction(async (connection) => {
+      connection.execute('DELETE FROM submissions WHERE artist_id = ?', [id]);
+      connection.execute('DELETE FROM assignment_artists WHERE artist_id = ?', [id]);
+      connection.execute('DELETE FROM artist_links WHERE artist_id = ?', [id]);
+      const [result] = connection.execute('DELETE FROM artists WHERE id = ?', [id]);
+      return Number(result.affectedRows || 0) > 0;
+    });
   },
 
   async countActive() {
@@ -89,3 +109,43 @@ export const artistRepository = {
     return rows;
   }
 };
+
+async function attachArtist(artist) {
+  if (!artist) return null;
+  const [withLinks] = await attachLinks([artist]);
+  return withLinks;
+}
+
+async function attachLinks(artists) {
+  if (!artists.length) return artists;
+  const ids = artists.map((artist) => Number(artist.id));
+  const placeholders = ids.map(() => '?').join(', ');
+  const [rows] = await pool.execute(
+    `SELECT id, artist_id, platform, url
+     FROM artist_links
+     WHERE artist_id IN (${placeholders})
+     ORDER BY platform ASC, id ASC`,
+    ids
+  );
+  const linksByArtist = new Map();
+  rows.forEach((row) => {
+    const key = Number(row.artist_id);
+    if (!linksByArtist.has(key)) linksByArtist.set(key, []);
+    linksByArtist.get(key).push(row);
+  });
+  return artists.map((artist) => ({
+    ...artist,
+    links: linksByArtist.get(Number(artist.id)) || []
+  }));
+}
+
+function replaceLinks(connection, artistId, links = []) {
+  connection.execute('DELETE FROM artist_links WHERE artist_id = ?', [artistId]);
+  for (const link of links) {
+    if (!link?.platform || !link?.url) continue;
+    connection.execute(
+      `INSERT OR IGNORE INTO artist_links (artist_id, platform, url) VALUES (?, ?, ?)`,
+      [artistId, link.platform, link.url]
+    );
+  }
+}

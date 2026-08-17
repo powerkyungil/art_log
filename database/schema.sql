@@ -26,9 +26,21 @@ CREATE TABLE IF NOT EXISTS artists (
 CREATE INDEX IF NOT EXISTS idx_artists_name ON artists (name);
 CREATE INDEX IF NOT EXISTS idx_artists_status ON artists (status);
 
+CREATE TABLE IF NOT EXISTS artist_links (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  artist_id INTEGER NOT NULL,
+  platform TEXT NOT NULL,
+  url TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+  UNIQUE (artist_id, platform, url),
+  FOREIGN KEY (artist_id) REFERENCES artists (id) ON UPDATE CASCADE ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_artist_links_artist ON artist_links (artist_id);
+
 CREATE TABLE IF NOT EXISTS assignments (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  week INTEGER NOT NULL CHECK (week > 0),
+  round_no INTEGER NOT NULL UNIQUE CHECK (round_no > 0),
   title TEXT NOT NULL,
   topic TEXT NOT NULL,
   description TEXT,

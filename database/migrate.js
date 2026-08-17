@@ -26,12 +26,27 @@ if (uninitializedArtists.length) {
   ).run(initialPasswordHash);
 }
 
+database.exec(`
+  CREATE TABLE IF NOT EXISTS artist_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    artist_id INTEGER NOT NULL,
+    platform TEXT NOT NULL,
+    url TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE (artist_id, platform, url),
+    FOREIGN KEY (artist_id) REFERENCES artists (id) ON UPDATE CASCADE ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS idx_artist_links_artist ON artist_links (artist_id);
+`);
+
 const assignmentColumns = database.prepare('PRAGMA table_info(assignments)').all();
 if (!assignmentColumns.some((column) => column.name === 'target_scope')) {
   database.exec("ALTER TABLE assignments ADD COLUMN target_scope TEXT NOT NULL DEFAULT 'ALL'");
 }
 
-removeUniqueWeekConstraint();
+const hadLegacyWeekColumn = migrateAssignmentRound(assignmentColumns);
+if (hadLegacyWeekColumn) renumberLegacyAssignments();
+database.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_assignments_round_no ON assignments (round_no)');
 
 database.exec(`
   CREATE TABLE IF NOT EXISTS assignment_artists (
@@ -44,49 +59,32 @@ database.exec(`
   );
   CREATE INDEX IF NOT EXISTS idx_assignment_artists_artist ON assignment_artists (artist_id);
 `);
+// 모든 기존 미션도 현재 정책에 맞춰 활동중인 전체 작가의 공통 미션으로 전환합니다.
+database.exec("UPDATE assignments SET target_scope = 'ALL'");
+database.exec('DELETE FROM assignment_artists');
 console.log(`SQLite schema is ready: ${config.db.file}`);
 database.close();
 
-function removeUniqueWeekConstraint() {
-  const indexes = database.prepare('PRAGMA index_list(assignments)').all();
-  const hasUniqueWeek = indexes.some((index) => {
-    if (Number(index.unique) !== 1) return false;
-    const indexName = String(index.name).replaceAll('"', '""');
-    const columns = database.prepare(`PRAGMA index_info("${indexName}")`).all();
-    return columns.length === 1 && columns[0].name === 'week';
-  });
+function migrateAssignmentRound(columns) {
+  const hasRoundNo = columns.some((column) => column.name === 'round_no');
+  const hasWeek = columns.some((column) => column.name === 'week');
+  if (hasRoundNo || !hasWeek) return false;
 
-  if (!hasUniqueWeek) return;
+  database.exec('ALTER TABLE assignments RENAME COLUMN week TO round_no');
+  return true;
+}
 
-  database.exec('PRAGMA foreign_keys = OFF');
+function renumberLegacyAssignments() {
+  const assignments = database.prepare(
+    'SELECT id FROM assignments ORDER BY round_no ASC, start_at ASC, id ASC'
+  ).all();
+
+  database.exec('BEGIN');
   try {
-    database.exec('BEGIN');
-    database.exec(`
-      CREATE TABLE assignments_new (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        week INTEGER NOT NULL CHECK (week > 0),
-        title TEXT NOT NULL,
-        topic TEXT NOT NULL,
-        description TEXT,
-        recommended_channel TEXT,
-        start_at TEXT NOT NULL,
-        due_at TEXT NOT NULL,
-        is_visible INTEGER NOT NULL DEFAULT 0 CHECK (is_visible IN (0, 1)),
-        target_scope TEXT NOT NULL DEFAULT 'ALL' CHECK (target_scope IN ('ALL', 'SELECTED')),
-        created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
-        updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
-      )
-    `);
-    database.exec(`
-      INSERT INTO assignments_new
-        (id, week, title, topic, description, recommended_channel, start_at, due_at,
-         is_visible, target_scope, created_at, updated_at)
-      SELECT id, week, title, topic, description, recommended_channel, start_at, due_at,
-             is_visible, target_scope, created_at, updated_at
-      FROM assignments
-    `);
-    database.exec('DROP TABLE assignments');
-    database.exec('ALTER TABLE assignments_new RENAME TO assignments');
+    const update = database.prepare('UPDATE assignments SET round_no = ? WHERE id = ?');
+    // 기존 고유 제약을 유지한 채 순서를 바꾸면 중간 값이 충돌할 수 있어 임시 번호를 먼저 부여합니다.
+    assignments.forEach((assignment, index) => update.run(assignments.length + index + 1, assignment.id));
+    assignments.forEach((assignment, index) => update.run(index + 1, assignment.id));
     database.exec('COMMIT');
   } catch (error) {
     try {
@@ -95,9 +93,5 @@ function removeUniqueWeekConstraint() {
       // Keep the original migration error.
     }
     throw error;
-  } finally {
-    database.exec('PRAGMA foreign_keys = ON');
   }
-
-  database.exec('CREATE INDEX IF NOT EXISTS idx_assignments_visibility_dates ON assignments (is_visible, start_at, due_at)');
 }

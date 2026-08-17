@@ -4,12 +4,13 @@ import { noticeRepository } from '../repositories/noticeRepository.js';
 import { submissionRepository } from '../repositories/submissionRepository.js';
 import { DEFAULT_ARTIST_PASSWORD, hashArtistPassword } from '../utils/artistAuth.js';
 import { createAccessToken } from '../utils/tokens.js';
-import { isValidDateTime, positiveInteger, required } from '../utils/validation.js';
+import { isValidDateTime, isValidUrl, required } from '../utils/validation.js';
 import { toSqlDateTime } from '../utils/http.js';
-import { normalizeMonth } from '../utils/month.js';
 
 const CHANNELS = ['Instagram', 'YouTube', 'Blog', 'TikTok', '기타'];
 const ARTIST_STATUSES = ['ACTIVE', 'INACTIVE', 'COMPLETED'];
+const SOCIAL_PLATFORMS = ['Instagram', 'YouTube', 'TikTok', 'Blog', 'X', 'Facebook', '기타'];
+const SUBMITTED_STATUSES = new Set(['SUBMITTED', 'CONFIRMED']);
 
 function formError(res, view, data, message, status = 422) {
   return res.status(status).render(view, { ...data, error: message });
@@ -24,13 +25,13 @@ function buildDashboard(rows, assignments, query) {
         id: row.artist_id,
         name: row.artist_name,
         status: row.artist_status,
-        weeks: new Map()
+        assignments: new Map()
       });
     }
     const applicable = Number(row.is_applicable) === 1;
-    artists.get(row.artist_id).weeks.set(row.assignment_id, {
+    artists.get(row.artist_id).assignments.set(row.assignment_id, {
       assignmentId: row.assignment_id,
-      week: row.week,
+      roundNo: row.round_no,
       applicable,
       status: applicable ? row.status || 'NOT_SUBMITTED' : 'NOT_APPLICABLE',
       postUrl: row.post_url,
@@ -48,9 +49,9 @@ function buildDashboard(rows, assignments, query) {
 
   const assignmentGroups = [];
   for (const assignment of assignments) {
-    let group = assignmentGroups.find((item) => item.week === assignment.week);
+    let group = assignmentGroups.find((item) => item.roundNo === assignment.round_no);
     if (!group) {
-      group = { week: assignment.week, assignments: [], isCurrent: false };
+      group = { roundNo: assignment.round_no, assignments: [], isCurrent: false };
       assignmentGroups.push(group);
     }
     group.assignments.push(assignment);
@@ -60,34 +61,53 @@ function buildDashboard(rows, assignments, query) {
   });
 
   const artistRows = [...artists.values()].map((artist) => {
-    const weeks = assignments.map((assignment) => artist.weeks.get(assignment.id) || {
+    const assignmentStatuses = assignments.map((assignment) => artist.assignments.get(assignment.id) || {
       assignmentId: assignment.id,
-      week: assignment.week,
+      roundNo: assignment.round_no,
       applicable: false,
       status: 'NOT_APPLICABLE',
       postUrl: null
     });
-    const applicableAssignments = targetAssignments.filter((assignment) => artist.weeks.get(assignment.id)?.applicable);
+    const applicableAssignments = targetAssignments.filter((assignment) => artist.assignments.get(assignment.id)?.applicable);
     const submittedCount = applicableAssignments.filter((assignment) => {
-      const status = artist.weeks.get(assignment.id)?.status;
-      return status === 'SUBMITTED' || status === 'CONFIRMED';
+      const status = artist.assignments.get(assignment.id)?.status;
+      return SUBMITTED_STATUSES.has(status);
     }).length;
+    const progressByRound = Object.fromEntries(assignmentGroups.map((group) => {
+      const groupAssignments = group.assignments.filter((assignment) => artist.assignments.get(assignment.id)?.applicable);
+      const groupSubmittedCount = groupAssignments.filter((assignment) => (
+        SUBMITTED_STATUSES.has(artist.assignments.get(assignment.id)?.status)
+      )).length;
+
+      return [group.roundNo, {
+        applicableCount: groupAssignments.length,
+        submittedCount: groupSubmittedCount,
+        progressRate: groupAssignments.length
+          ? Math.round((groupSubmittedCount / groupAssignments.length) * 100)
+          : 0
+      }];
+    }));
     return {
       ...artist,
-      weeks,
+      assignmentStatuses,
+      progressByRound,
       progressRate: applicableAssignments.length ? Math.round((submittedCount / applicableAssignments.length) * 100) : 0,
-      currentStatus: current && artist.weeks.get(current.id)?.applicable
-        ? artist.weeks.get(current.id).status
+      currentStatus: current && artist.assignments.get(current.id)?.applicable
+        ? artist.assignments.get(current.id).status
         : 'NOT_APPLICABLE'
     };
   });
 
   assignmentGroups.forEach((group) => {
     const groupAssignmentIds = group.assignments.map((assignment) => assignment.id);
-    const applicableWeeks = artistRows.flatMap((artist) => artist.weeks)
-      .filter((week) => groupAssignmentIds.includes(week.assignmentId) && week.applicable);
-    group.applicableCount = applicableWeeks.length;
-    group.submittedCount = applicableWeeks.filter((week) => ['SUBMITTED', 'CONFIRMED'].includes(week.status)).length;
+    const applicableAssignments = artistRows.flatMap((artist) => artist.assignmentStatuses)
+      .filter((assignment) => groupAssignmentIds.includes(assignment.assignmentId) && assignment.applicable);
+    group.applicableCount = applicableAssignments.length;
+    group.submittedCount = applicableAssignments.filter((assignment) => SUBMITTED_STATUSES.has(assignment.status)).length;
+    group.notSubmittedCount = group.applicableCount - group.submittedCount;
+    group.progressRate = group.applicableCount
+      ? Math.round((group.submittedCount / group.applicableCount) * 100)
+      : 0;
   });
 
   const search = String(query.search || '').trim().toLowerCase();
@@ -122,13 +142,12 @@ export const adminController = {
   },
 
   async assignmentProgress(req, res) {
-    const month = normalizeMonth(req.query.month);
     const [assignments, rows] = await Promise.all([
-      assignmentRepository.list({ includeHidden: false, month }),
-      submissionRepository.dashboardRows({ month })
+      assignmentRepository.list({ includeHidden: false }),
+      submissionRepository.dashboardRows()
     ]);
     const dashboard = buildDashboard(rows, assignments, req.query);
-    return res.render('admin/progress/index', { title: '과제 진행 현황', dashboard, month });
+    return res.render('admin/progress/index', { title: '미션 진행 현황', dashboard });
   },
 
   async artists(req, res) {
@@ -141,22 +160,30 @@ export const adminController = {
     return res.render('admin/artists/form', {
       title: '작가 등록',
       mode: 'create',
-      artist: { name: '', phone: '', sns_account: '', status: 'ACTIVE' },
+      artist: { name: '', phone: '', sns_account: '', status: 'ACTIVE', links: [{ platform: 'Instagram', url: '' }] },
       statuses: ARTIST_STATUSES,
+      platforms: SOCIAL_PLATFORMS,
       error: null
     });
   },
 
   async createArtist(req, res) {
     const name = required(req.body.name);
+    const linkForm = normalizeArtistLinks(req.body);
+    const artistForm = { ...req.body, links: linkForm.links };
     if (!name) {
       return formError(res, 'admin/artists/form', {
-        title: '작가 등록', mode: 'create', artist: req.body, statuses: ARTIST_STATUSES
+        title: '작가 등록', mode: 'create', artist: artistForm, statuses: ARTIST_STATUSES, platforms: SOCIAL_PLATFORMS
       }, '작가명을 입력해주세요.');
+    }
+    if (linkForm.error) {
+      return formError(res, 'admin/artists/form', {
+        title: '작가 등록', mode: 'create', artist: artistForm, statuses: ARTIST_STATUSES, platforms: SOCIAL_PLATFORMS
+      }, linkForm.error);
     }
     if (await artistRepository.findByName(name)) {
       return formError(res, 'admin/artists/form', {
-        title: '작가 등록', mode: 'create', artist: req.body, statuses: ARTIST_STATUSES
+        title: '작가 등록', mode: 'create', artist: artistForm, statuses: ARTIST_STATUSES, platforms: SOCIAL_PLATFORMS
       }, '이미 사용 중인 작가명입니다. 작가명이 로그인 아이디로 사용됩니다.');
     }
 
@@ -168,7 +195,8 @@ export const adminController = {
       snsAccount: required(req.body.sns_account),
       status: ARTIST_STATUSES.includes(req.body.status) ? req.body.status : 'ACTIVE',
       tokenHash,
-      passwordHash
+      passwordHash,
+      links: linkForm.links
     });
     req.flash('success', '작가가 등록되었습니다. 초기 비밀번호는 1234입니다.');
     return res.redirect(`/admin/artists/${artist.id}`);
@@ -187,30 +215,38 @@ export const adminController = {
     const artist = await artistRepository.findById(req.params.id);
     if (!artist) return res.status(404).render('error', { title: '작가를 찾을 수 없습니다', message: '존재하지 않는 작가입니다.' });
     return res.render('admin/artists/form', {
-      title: '작가 수정', mode: 'edit', artist, statuses: ARTIST_STATUSES, error: null
+      title: '작가 수정', mode: 'edit', artist, statuses: ARTIST_STATUSES, platforms: SOCIAL_PLATFORMS, error: null
     });
   },
 
   async updateArtist(req, res) {
+    const existing = await artistRepository.findById(req.params.id);
+    if (!existing) return res.status(404).render('error', { title: '작가를 찾을 수 없습니다', message: '존재하지 않는 작가입니다.' });
     const name = required(req.body.name);
     const status = ARTIST_STATUSES.includes(req.body.status) ? req.body.status : 'ACTIVE';
+    const linkForm = normalizeArtistLinks(req.body);
+    const artistForm = { ...existing, ...req.body, links: linkForm.links };
     if (!name) {
-      const artist = { ...(await artistRepository.findById(req.params.id)), ...req.body };
       return formError(res, 'admin/artists/form', {
-        title: '작가 수정', mode: 'edit', artist, statuses: ARTIST_STATUSES
+        title: '작가 수정', mode: 'edit', artist: artistForm, statuses: ARTIST_STATUSES, platforms: SOCIAL_PLATFORMS
       }, '작가명을 입력해주세요.');
     }
-    if (await artistRepository.findOtherByName(name, req.params.id)) {
-      const artist = { ...(await artistRepository.findById(req.params.id)), ...req.body };
+    if (linkForm.error) {
       return formError(res, 'admin/artists/form', {
-        title: '작가 수정', mode: 'edit', artist, statuses: ARTIST_STATUSES
+        title: '작가 수정', mode: 'edit', artist: artistForm, statuses: ARTIST_STATUSES, platforms: SOCIAL_PLATFORMS
+      }, linkForm.error);
+    }
+    if (await artistRepository.findOtherByName(name, req.params.id)) {
+      return formError(res, 'admin/artists/form', {
+        title: '작가 수정', mode: 'edit', artist: artistForm, statuses: ARTIST_STATUSES, platforms: SOCIAL_PLATFORMS
       }, '이미 사용 중인 작가명입니다. 작가명이 로그인 아이디로 사용됩니다.');
     }
     await artistRepository.update(req.params.id, {
       name,
       phone: required(req.body.phone),
       snsAccount: required(req.body.sns_account),
-      status
+      status,
+      links: linkForm.links
     });
     req.flash('success', '작가 정보가 수정되었습니다.');
     return res.redirect(`/admin/artists/${req.params.id}`);
@@ -225,87 +261,71 @@ export const adminController = {
     return res.redirect(`/admin/artists/${artist.id}`);
   },
 
+  async deleteArtist(req, res) {
+    const artist = await artistRepository.findById(req.params.id);
+    if (!artist) return res.status(404).render('error', { title: '작가를 찾을 수 없습니다', message: '존재하지 않는 작가입니다.' });
+    await artistRepository.delete(artist.id);
+    req.flash('success', `${artist.name} 작가와 관련 제출 내역이 삭제되었습니다.`);
+    return res.redirect('/admin/artists');
+  },
+
   async assignments(req, res) {
-    const month = normalizeMonth(req.query.month);
-    const assignments = await assignmentRepository.list({ includeHidden: true, month });
-    return res.render('admin/assignments/index', { title: '과제 관리', assignments, month });
+    const assignments = await assignmentRepository.list({ includeHidden: true });
+    return res.render('admin/assignments/index', { title: '미션 관리', assignments });
   },
 
   async showAssignmentCreate(req, res) {
-    const artists = await artistRepository.list({});
+    const nextRoundNo = await assignmentRepository.nextRoundNo();
     return res.render('admin/assignments/form', {
-      title: '과제 등록', mode: 'create', assignment: {
-        week: '', title: '', topic: '', description: '', recommended_channel: '',
-        start_at: '', due_at: '', is_visible: 0, target_scope: 'SELECTED'
-      }, artists, selectedArtistIds: [], channels: CHANNELS, error: null
+      title: '미션 등록', mode: 'create', assignment: {
+        round_no: nextRoundNo, title: '', topic: '', description: '', recommended_channel: '',
+        start_at: '', due_at: '', is_visible: 0, target_scope: 'ALL'
+      }, channels: CHANNELS, error: null
     });
   },
 
   async createAssignment(req, res) {
     const data = normalizeAssignmentBody(req.body);
     const error = validateAssignment(data);
-    const artists = await artistRepository.list({});
-    const selectedArtists = await artistRepository.findActiveByIds(data.artistIds);
-    if (error) return formError(res, 'admin/assignments/form', { title: '과제 등록', mode: 'create', assignment: req.body, artists, selectedArtistIds: data.artistIds, channels: CHANNELS }, error);
-    if (data.targetScope === 'SELECTED' && (!data.artistIds.length || selectedArtists.length !== data.artistIds.length)) {
-      return formError(res, 'admin/assignments/form', { title: '과제 등록', mode: 'create', assignment: req.body, artists, selectedArtistIds: data.artistIds, channels: CHANNELS }, '활동중인 작가를 한 명 이상 선택해주세요.');
-    }
-    try {
-      await assignmentRepository.create(data);
-    } catch (dbError) {
-      if (isDuplicateWeekError(dbError)) return formError(res, 'admin/assignments/form', { title: '과제 등록', mode: 'create', assignment: req.body, artists, selectedArtistIds: data.artistIds, channels: CHANNELS }, '이미 등록된 주차입니다. 기존 과제를 수정하거나 다른 주차를 선택해주세요.');
-      throw dbError;
-    }
-    req.flash('success', '과제가 등록되었습니다.');
+    const nextRoundNo = await assignmentRepository.nextRoundNo();
+    const assignment = { ...req.body, round_no: nextRoundNo };
+    if (error) return formError(res, 'admin/assignments/form', { title: '미션 등록', mode: 'create', assignment, channels: CHANNELS }, error);
+    await assignmentRepository.create(data);
+    req.flash('success', '미션이 등록되었습니다.');
     return res.redirect('/admin/assignments');
   },
 
   async showAssignmentEdit(req, res) {
     const assignment = await assignmentRepository.findById(req.params.id);
-    if (!assignment) return res.status(404).render('error', { title: '과제를 찾을 수 없습니다', message: '존재하지 않는 과제입니다.' });
-    const [artists, selectedArtistIds] = await Promise.all([
-      artistRepository.list({}),
-      assignmentRepository.findTargetArtistIds(assignment.id)
-    ]);
-    return res.render('admin/assignments/form', { title: '과제 수정', mode: 'edit', assignment, artists, selectedArtistIds, channels: CHANNELS, error: null });
+    if (!assignment) return res.status(404).render('error', { title: '미션을 찾을 수 없습니다', message: '존재하지 않는 미션입니다.' });
+    return res.render('admin/assignments/form', { title: '미션 수정', mode: 'edit', assignment, channels: CHANNELS, error: null });
   },
 
   async updateAssignment(req, res) {
     const existing = await assignmentRepository.findById(req.params.id);
-    if (!existing) return res.status(404).render('error', { title: '과제를 찾을 수 없습니다', message: '존재하지 않는 과제입니다.' });
+    if (!existing) return res.status(404).render('error', { title: '미션을 찾을 수 없습니다', message: '존재하지 않는 미션입니다.' });
     const data = normalizeAssignmentBody(req.body);
-    const artists = await artistRepository.list({});
-    const selectedArtists = await artistRepository.findActiveByIds(data.artistIds);
     const error = validateAssignment(data);
-    if (error) return formError(res, 'admin/assignments/form', { title: '과제 수정', mode: 'edit', assignment: { ...existing, ...req.body }, artists, selectedArtistIds: data.artistIds, channels: CHANNELS }, error);
-    if (data.targetScope === 'SELECTED' && (!data.artistIds.length || selectedArtists.length !== data.artistIds.length)) {
-      return formError(res, 'admin/assignments/form', { title: '과제 수정', mode: 'edit', assignment: { ...existing, ...req.body }, artists, selectedArtistIds: data.artistIds, channels: CHANNELS }, '활동중인 작가를 한 명 이상 선택해주세요.');
-    }
-    try {
-      await assignmentRepository.update(req.params.id, data);
-    } catch (dbError) {
-      if (isDuplicateWeekError(dbError)) return formError(res, 'admin/assignments/form', { title: '과제 수정', mode: 'edit', assignment: { ...existing, ...req.body }, artists, selectedArtistIds: data.artistIds, channels: CHANNELS }, '이미 등록된 주차입니다. 다른 주차를 선택해주세요.');
-      throw dbError;
-    }
-    req.flash('success', '과제가 수정되었습니다.');
+    if (error) return formError(res, 'admin/assignments/form', { title: '미션 수정', mode: 'edit', assignment: { ...existing, ...req.body }, channels: CHANNELS }, error);
+    await assignmentRepository.update(req.params.id, data);
+    req.flash('success', '미션이 수정되었습니다.');
     return res.redirect('/admin/assignments');
   },
 
   async toggleAssignment(req, res) {
     await assignmentRepository.toggleVisibility(req.params.id);
-    req.flash('success', '과제 공개 상태가 변경되었습니다.');
+    req.flash('success', '미션 공개 상태가 변경되었습니다.');
     return res.redirect('/admin/assignments');
   },
 
   async submissions(req, res) {
-    const month = normalizeMonth(req.query.month);
     const filters = {
       search: req.query.search || '', status: req.query.status || '',
-      assignmentId: req.query.assignment_id || '', channel: req.query.channel || '', month
+      assignmentId: req.query.assignment_id || '', channel: req.query.channel || ''
     };
     const [submissions, assignments] = await Promise.all([
       submissionRepository.list(filters),
-      assignmentRepository.list({ includeHidden: true, month })
+      assignmentRepository.list({ includeHidden: true })
     ]);
     return res.render('admin/submissions/index', { title: '제출 내역', submissions, assignments, filters, channels: CHANNELS });
   },
@@ -375,21 +395,36 @@ export const adminController = {
 
 function normalizeAssignmentBody(body) {
   return {
-    week: positiveInteger(body.week),
     title: required(body.title),
     topic: required(body.topic),
     description: required(body.description),
     recommendedChannel: required(body.recommended_channel),
     startAt: toSqlDateTime(body.start_at),
     dueAt: toSqlDateTime(body.due_at),
-    isVisible: body.is_visible === '1' || body.is_visible === 'on',
-    targetScope: body.target_scope === 'ALL' ? 'ALL' : 'SELECTED',
-    artistIds: toArray(body.artist_ids).map((id) => positiveInteger(id)).filter(Boolean)
+    isVisible: body.is_visible === '1' || body.is_visible === 'on'
   };
 }
 
+function normalizeArtistLinks(body) {
+  const platforms = toArray(body.link_platform);
+  const urls = toArray(body.link_url);
+  const links = [];
+  const length = Math.max(platforms.length, urls.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const platform = required(platforms[index]);
+    const url = required(urls[index]);
+    if (!platform && !url) continue;
+    if (!SOCIAL_PLATFORMS.includes(platform)) return { links, error: '플랫폼을 올바르게 선택해주세요.' };
+    if (!isValidUrl(url)) return { links, error: '플랫폼 URL은 http:// 또는 https://로 시작해야 합니다.' };
+    if (!links.some((link) => link.platform === platform && link.url === url)) links.push({ platform, url });
+  }
+
+  return { links, error: null };
+}
+
 function validateAssignment(data) {
-  if (!data.week || !data.title || !data.topic) return '주차, 과제 제목, 과제 주제를 입력해주세요.';
+  if (!data.title || !data.topic) return '미션 제목과 미션 주제를 입력해주세요.';
   if (!isValidDateTime(data.startAt.replace(' ', 'T')) || !isValidDateTime(data.dueAt.replace(' ', 'T'))) return '제출 시작일과 마감일을 올바르게 입력해주세요.';
   if (new Date(data.startAt).getTime() >= new Date(data.dueAt).getTime()) return '마감일은 제출 시작일 이후여야 합니다.';
   return null;
@@ -407,10 +442,5 @@ function normalizeNoticeBody(body) {
 
 function toArray(value) {
   if (Array.isArray(value)) return value;
-  return value ? [value] : [];
-}
-
-function isDuplicateWeekError(error) {
-  return error?.code === 'SQLITE_CONSTRAINT_UNIQUE'
-    || (error?.code === 'ERR_SQLITE_ERROR' && String(error.message || '').includes('UNIQUE constraint failed: assignments.week'));
+  return value === undefined || value === null ? [] : [value];
 }

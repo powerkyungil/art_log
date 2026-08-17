@@ -9,7 +9,7 @@
 <body class="admin-page">
   <header class="site-header">
     <div class="container header-inner">
-      <a class="brand" href="/admin" aria-label="SONY">SONY</a>
+      <a class="brand" href="/admin" aria-label="SONY"><img src="/images/sony-logo.jpeg" alt="SONY"></a>
       <div class="header-user">
         <span><%= currentAdmin?.name || '관리자' %></span>
         <form method="post" action="/admin/logout" class="inline-form">
@@ -23,9 +23,9 @@
     <aside class="sidebar">
       <nav>
         <a class="nav-link <%= currentPath.startsWith('/admin/dashboard') || currentPath === '/admin' ? 'active' : '' %>" href="/admin/dashboard">대시보드</a>
-        <a class="nav-link <%= currentPath.startsWith('/admin/progress') ? 'active' : '' %>" href="/admin/progress">과제 진행 현황</a>
+        <a class="nav-link <%= currentPath.startsWith('/admin/progress') ? 'active' : '' %>" href="/admin/progress">미션 진행 현황</a>
         <a class="nav-link <%= currentPath.startsWith('/admin/artists') ? 'active' : '' %>" href="/admin/artists">작가 관리</a>
-        <a class="nav-link <%= currentPath.startsWith('/admin/assignments') ? 'active' : '' %>" href="/admin/assignments">과제 관리</a>
+        <a class="nav-link <%= currentPath.startsWith('/admin/assignments') ? 'active' : '' %>" href="/admin/assignments">미션 관리</a>
         <a class="nav-link <%= currentPath.startsWith('/admin/submissions') ? 'active' : '' %>" href="/admin/submissions">제출 내역</a>
         <a class="nav-link <%= currentPath.startsWith('/admin/notices') ? 'active' : '' %>" href="/admin/notices">공지사항</a>
       </nav>

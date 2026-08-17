@@ -1,7 +1,7 @@
 <%- include('../../partials/admin-head', { title }) %>
 
 <div class="page-heading">
-  <div><div class="eyebrow">ASSIGNMENT</div><h1><%= title %></h1><p>미래 과제는 공개하더라도 진행률 대상에서는 시작일 이후에 포함됩니다.</p></div>
+  <div><div class="eyebrow">MISSION</div><h1><%= title %></h1><p>미션 번호는 전체 미션 기준으로 자동 증가하며, 제출 시작일 이후 진행률에 포함됩니다.</p></div>
   <a class="button button-secondary" href="/admin/assignments">목록으로</a>
 </div>
 
@@ -10,36 +10,23 @@
   <form method="post" action="<%= mode === 'create' ? '/admin/assignments' : `/admin/assignments/${assignment.id}` %>" class="stack-form">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <div class="form-grid">
-      <label>주차 *<input type="number" name="week" value="<%= assignment.week || '' %>" min="1" required></label>
+      <label>미션 번호<input type="text" value="<%= assignment.round_no ? `미션 ${assignment.round_no}` : '등록 시 자동 부여' %>" readonly></label>
       <label>권장 업로드 채널<select name="recommended_channel"><option value="">선택 안 함</option><% channels.forEach((channel) => { %><option value="<%= channel %>" <%= assignment.recommended_channel === channel ? 'selected' : '' %>><%= channel %></option><% }) %></select></label>
-      <label class="full">과제 제목 *<input type="text" name="title" value="<%= assignment.title || '' %>" maxlength="255" required></label>
-      <label class="full">과제 주제 *<input type="text" name="topic" value="<%= assignment.topic || '' %>" maxlength="255" required></label>
-      <label class="full">과제 설명<textarea name="description"><%= assignment.description || '' %></textarea></label>
+      <label class="full">미션 제목 *<input type="text" name="title" value="<%= assignment.title || '' %>" maxlength="255" required></label>
+      <label class="full">미션 주제 *<input type="text" name="topic" value="<%= assignment.topic || '' %>" maxlength="255" required></label>
+      <label class="full">미션 설명<textarea name="description"><%= assignment.description || '' %></textarea></label>
       <label>제출 시작일 *<input type="datetime-local" name="start_at" value="<%= toDateTimeLocal(assignment.start_at) %>" required></label>
       <label>제출 마감일 *<input type="datetime-local" name="due_at" value="<%= toDateTimeLocal(assignment.due_at) %>" required></label>
-      <div class="full">
-        <span class="detail-label">대상 작가 *</span>
-        <div class="actions" style="margin:8px 0 12px">
-          <label class="checkbox"><input type="radio" name="target_scope" value="SELECTED" <%= assignment.target_scope !== 'ALL' ? 'checked' : '' %>> 특정 작가 지정</label>
-          <label class="checkbox"><input type="radio" name="target_scope" value="ALL" <%= assignment.target_scope === 'ALL' ? 'checked' : '' %>> 전체 작가</label>
+      <div class="full common-mission-target">
+        <span class="detail-label">미션 대상</span>
+        <div class="common-mission-target-box">
+          <span class="badge badge-info">전체 활동 작가</span>
+          <span class="small-text muted-text">모든 활동중 작가에게 동일한 미션이 표시되며, 작가별 제출 여부를 확인할 수 있습니다.</span>
         </div>
-        <div class="target-picker">
-          <% if (!artists.length) { %>
-            <p class="muted-text small-text">먼저 활동중인 작가를 등록해주세요.</p>
-          <% } else { %>
-            <% artists.forEach((artist) => { %>
-              <label class="checkbox target-item <%= artist.status !== 'ACTIVE' ? 'muted-text' : '' %>">
-                <input type="checkbox" name="artist_ids" value="<%= artist.id %>" <%= selectedArtistIds.includes(Number(artist.id)) ? 'checked' : '' %> <%= artist.status !== 'ACTIVE' ? 'disabled' : '' %>>
-                <span><%= displayName(artist.name) %> <small>(<%= statusLabel(artist.status) %>)</small></span>
-              </label>
-            <% }) %>
-          <% } %>
-        </div>
-        <p class="small-text muted-text" style="margin:8px 0 0">특정 작가 지정 과제는 선택된 작가에게만 노출되며, 다른 작가에게는 ‘해당없음’으로 표시됩니다.</p>
       </div>
       <label class="checkbox full"><input type="checkbox" name="is_visible" value="1" <%= assignment.is_visible ? 'checked' : '' %>> 작가에게 공개</label>
     </div>
-    <div class="actions"><button class="button button-primary" type="submit"><%= mode === 'create' ? '과제 등록' : '수정 저장' %></button><a class="button button-secondary" href="/admin/assignments">취소</a></div>
+    <div class="actions"><button class="button button-primary" type="submit"><%= mode === 'create' ? '미션 등록' : '수정 저장' %></button><a class="button button-secondary" href="/admin/assignments">취소</a></div>
   </form>
 </section>
 

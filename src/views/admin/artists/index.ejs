@@ -16,16 +16,26 @@
   </form>
   <% if (!artists.length) { %><div class="empty-state">등록된 작가가 없습니다.</div><% } else { %>
     <div class="table-wrap"><table>
-      <thead><tr><th>작가</th><th>연락처</th><th>SNS 계정</th><th>상태</th><th>등록일</th><th></th></tr></thead>
+      <thead><tr><th>작가</th><th>연락처</th><th>플랫폼 URL</th><th>상태</th><th>등록일</th><th></th></tr></thead>
       <tbody>
         <% artists.forEach((artist) => { %>
           <tr>
             <td><a href="/admin/artists/<%= artist.id %>"><strong><%= displayName(artist.name) %></strong></a></td>
             <td><%= artist.phone || '-' %></td>
-            <td><%= artist.sns_account || '-' %></td>
+            <td>
+              <% if (artist.links?.length) { %>
+                <div class="artist-link-summary">
+                  <% artist.links.forEach((link) => { %><div class="artist-link-summary-item"><span class="badge badge-info"><%= link.platform %></span><a href="<%= link.url %>" target="_blank" rel="noopener noreferrer"><%= link.url %></a></div><% }) %>
+                </div>
+              <% } else { %>-<% } %>
+              <% if (artist.sns_account) { %><span class="legacy-sns-account">기존 계정: <%= artist.sns_account %></span><% } %>
+            </td>
             <td><span class="badge badge-<%= statusClass(artist.status) %>"><%= statusLabel(artist.status) %></span></td>
             <td><%= formatDate(artist.created_at) %></td>
-            <td><a class="button button-secondary button-small" href="/admin/artists/<%= artist.id %>/edit">수정</a></td>
+            <td><div class="actions">
+              <a class="button button-secondary button-small" href="/admin/artists/<%= artist.id %>/edit">수정</a>
+              <form method="post" action="/admin/artists/<%= artist.id %>/delete" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button-danger button-small" type="submit" data-confirm="<%= displayName(artist.name) %>와 제출 내역을 모두 삭제할까요?">삭제</button></form>
+            </div></td>
           </tr>
         <% }) %>
       </tbody>

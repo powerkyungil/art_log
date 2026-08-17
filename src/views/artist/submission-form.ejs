@@ -1,13 +1,13 @@
 <%- include('../partials/artist-head', { title }) %>
 
 <div class="page-heading">
-  <div><div class="eyebrow">SUBMISSION</div><h1><%= title %></h1><p><%= assignment.week %>주차 · <%= assignment.title %></p></div>
+  <div><div class="eyebrow">SUBMISSION</div><h1><%= title %></h1><p>미션 <%= assignment.round_no %> · <%= assignment.title %></p></div>
   <a class="button button-secondary" href="/artist">홈으로</a>
 </div>
 
 <section class="section-card">
   <% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
-  <div class="assignment-card" style="margin-bottom:18px"><strong>과제 주제</strong><p class="muted-text" style="margin:5px 0 0"><%= assignment.topic %></p><p class="small-text muted-text" style="margin:8px 0 0">마감 <%= formatDateTime(assignment.due_at) %></p></div>
+  <div class="assignment-card" style="margin-bottom:18px"><strong>미션 주제</strong><p class="muted-text" style="margin:5px 0 0"><%= assignment.topic %></p><p class="small-text muted-text" style="margin:8px 0 0">마감 <%= formatDateTime(assignment.due_at) %></p></div>
   <form method="post" action="<%= submission?.id ? `/artist/submissions/${submission.id}` : '/artist/submissions' %>" class="stack-form">
     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
     <input type="hidden" name="assignment_id" value="<%= assignment.id || submission?.assignment_id %>">

@@ -1,15 +1,15 @@
 <%- include('../../partials/admin-head', { title }) %>
 
 <div class="page-heading">
-  <div><div class="eyebrow">SUBMISSION DETAIL</div><h1>#<%= submission.id %> 제출 상세</h1><p><%= displayName(submission.artist_name) %> · <%= submission.week %>주차</p></div>
+  <div><div class="eyebrow">SUBMISSION DETAIL</div><h1>#<%= submission.id %> 제출 상세</h1><p><%= displayName(submission.artist_name) %> · 미션 <%= submission.round_no %></p></div>
   <a class="button button-secondary" href="/admin/submissions">목록으로</a>
 </div>
 
 <section class="section-card">
   <div class="detail-grid">
     <div class="detail-item"><span class="detail-label">작가</span><span class="detail-value"><a href="/admin/artists/<%= submission.artist_id %>"><%= displayName(submission.artist_name) %></a></span></div>
-    <div class="detail-item"><span class="detail-label">과제</span><span class="detail-value"><%= submission.week %>주차 · <%= submission.assignment_title %></span></div>
-    <div class="detail-item"><span class="detail-label">과제 주제</span><span class="detail-value"><%= submission.topic %></span></div>
+    <div class="detail-item"><span class="detail-label">미션</span><span class="detail-value">미션 <%= submission.round_no %> · <%= submission.assignment_title %></span></div>
+    <div class="detail-item"><span class="detail-label">미션 주제</span><span class="detail-value"><%= submission.topic %></span></div>
     <div class="detail-item"><span class="detail-label">업로드 날짜</span><span class="detail-value"><%= submission.upload_date %></span></div>
     <div class="detail-item"><span class="detail-label">업로드 채널</span><span class="detail-value"><%= submission.upload_channel %></span></div>
     <div class="detail-item"><span class="detail-label">제출일시</span><span class="detail-value"><%= formatDateTime(submission.submitted_at) %></span></div>

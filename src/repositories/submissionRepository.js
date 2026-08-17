@@ -5,7 +5,7 @@ export const submissionRepository = {
   async findById(id) {
     const [rows] = await pool.execute(
       `SELECT s.*, a.name AS artist_name, a.status AS artist_status,
-              ass.week, ass.title AS assignment_title, ass.topic,
+              ass.round_no, ass.title AS assignment_title, ass.topic,
               ass.due_at, u.name AS confirmer_name
        FROM submissions s
        JOIN artists a ON a.id = s.artist_id
@@ -19,7 +19,7 @@ export const submissionRepository = {
 
   async findByArtistAndAssignment(artistId, assignmentId) {
     const [rows] = await pool.execute(
-      `SELECT s.*, ass.week, ass.title AS assignment_title, ass.topic, ass.due_at
+      `SELECT s.*, ass.round_no, ass.title AS assignment_title, ass.topic, ass.due_at
        FROM submissions s JOIN assignments ass ON ass.id = s.assignment_id
        WHERE s.artist_id = ? AND s.assignment_id = ? LIMIT 1`,
       [artistId, assignmentId]
@@ -29,29 +29,21 @@ export const submissionRepository = {
 
   async listForArtist(artistId) {
     const [rows] = await pool.execute(
-      `SELECT ass.id AS assignment_id, ass.week, ass.title, ass.topic, ass.start_at, ass.due_at,
+      `SELECT ass.id AS assignment_id, ass.round_no, ass.title, ass.topic, ass.start_at, ass.due_at,
               s.id AS submission_id, s.upload_date, s.upload_channel, s.post_url, s.status,
               s.submitted_at, s.updated_at
        FROM assignments ass
        LEFT JOIN submissions s ON s.assignment_id = ass.id AND s.artist_id = ?
        WHERE ass.is_visible = 1
-         AND (ass.target_scope = 'ALL' OR EXISTS (
-           SELECT 1 FROM assignment_artists aa
-           WHERE aa.assignment_id = ass.id AND aa.artist_id = ?
-         ) OR s.id IS NOT NULL)
-       ORDER BY ass.week ASC, ass.start_at ASC, ass.id ASC`,
-      [artistId, artistId]
+       ORDER BY ass.round_no ASC, ass.start_at ASC, ass.id ASC`,
+      [artistId]
     );
     return rows;
   },
 
-  async list({ search = '', status = '', assignmentId = '', channel = '', month = '' } = {}) {
+  async list({ search = '', status = '', assignmentId = '', channel = '' } = {}) {
     const conditions = [];
     const params = [];
-    if (month) {
-      conditions.push('substr(s.submitted_at, 1, 7) = ?');
-      params.push(month);
-    }
     if (search) {
       conditions.push('(a.name LIKE ? OR s.post_url LIKE ?)');
       const keyword = `%${search}%`;
@@ -71,7 +63,7 @@ export const submissionRepository = {
     }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const [rows] = await pool.execute(
-      `SELECT s.*, a.name AS artist_name, ass.week, ass.title AS assignment_title,
+      `SELECT s.*, a.name AS artist_name, ass.round_no, ass.title AS assignment_title,
               ass.topic, ass.due_at
        FROM submissions s
        JOIN artists a ON a.id = s.artist_id
@@ -124,41 +116,25 @@ export const submissionRepository = {
        JOIN assignments ass ON ass.id = s.assignment_id
        WHERE s.assignment_id = ?
          AND a.status = 'ACTIVE'
-         AND s.status IN ('SUBMITTED', 'CONFIRMED')
-         AND (ass.target_scope = 'ALL' OR EXISTS (
-           SELECT 1 FROM assignment_artists aa
-           WHERE aa.assignment_id = ass.id AND aa.artist_id = a.id
-         ))`,
+         AND s.status IN ('SUBMITTED', 'CONFIRMED')`,
       [assignmentId]
     );
     return Number(rows[0].count);
   },
 
-  async dashboardRows({ month = '' } = {}) {
-    const conditions = ['a.status <> \'INACTIVE\'', 'ass.is_visible = 1'];
-    const params = [];
-    if (month) {
-      conditions.push('substr(ass.start_at, 1, 7) = ?');
-      params.push(month);
-    }
+  async dashboardRows() {
+    const conditions = ["a.status = 'ACTIVE'", 'ass.is_visible = 1'];
     const [rows] = await pool.execute(
       `SELECT a.id AS artist_id, a.name AS artist_name, a.status AS artist_status,
-              ass.id AS assignment_id, ass.week, ass.title AS assignment_title,
+              ass.id AS assignment_id, ass.round_no, ass.title AS assignment_title,
               ass.start_at, ass.due_at, s.id AS submission_id, s.status, s.post_url,
               s.submitted_at,
-              CASE WHEN ass.target_scope = 'ALL'
-                     OR EXISTS (
-                       SELECT 1 FROM assignment_artists aa
-                       WHERE aa.assignment_id = ass.id AND aa.artist_id = a.id
-                     )
-                     OR s.id IS NOT NULL
-                   THEN 1 ELSE 0 END AS is_applicable
+              1 AS is_applicable
        FROM artists a
        CROSS JOIN assignments ass
        LEFT JOIN submissions s ON s.artist_id = a.id AND s.assignment_id = ass.id
        WHERE ${conditions.join(' AND ')}
-       ORDER BY a.name ASC, ass.week ASC, ass.start_at ASC, ass.id ASC`,
-      params
+       ORDER BY a.name ASC, ass.round_no ASC, ass.start_at ASC, ass.id ASC`
     );
     return rows;
   }

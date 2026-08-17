@@ -1,89 +1,75 @@
 <section class="section-card assignment-progress-card">
   <form method="get" action="/admin/progress" class="filters">
-    <label>관리 월<input type="month" name="month" value="<%= month %>" required></label>
     <label class="filter-search">작가 검색<input type="search" name="search" value="<%= dashboard.filters.search %>" placeholder="작가명"></label>
-    <label>현재 상태<select name="status">
-      <option value="">전체 상태</option>
-      <option value="SUBMITTED" <%= dashboard.filters.status === 'SUBMITTED' ? 'selected' : '' %>>제출</option>
-      <option value="CONFIRMED" <%= dashboard.filters.status === 'CONFIRMED' ? 'selected' : '' %>>확인완료</option>
-      <option value="NOT_SUBMITTED" <%= dashboard.filters.status === 'NOT_SUBMITTED' ? 'selected' : '' %>>미제출</option>
-    </select></label>
     <button class="button button-secondary" type="submit">필터 적용</button>
   </form>
 
   <% if (!dashboard.assignments.length) { %>
-    <div class="empty-state">공개된 과제를 먼저 등록해주세요.</div>
+    <div class="empty-state">공개된 미션을 먼저 등록해주세요.</div>
   <% } else if (!dashboard.artists.length) { %>
-    <div class="empty-state">표시할 작가가 없습니다.</div>
+    <div class="empty-state">표시할 활동 작가가 없습니다.</div>
   <% } else { %>
-    <% const visibleGroups = dashboard.assignmentGroups.filter((group) => group.assignments.some((assignment) => dashboard.artists.some((artist) => artist.weeks.find((item) => item.assignmentId === assignment.id)?.applicable))); %>
+    <% const visibleGroups = dashboard.assignmentGroups.filter((group) => group.assignments.some((assignment) => dashboard.artists.some((artist) => artist.assignmentStatuses.find((item) => item.assignmentId === assignment.id)?.applicable))); %>
     <% if (!visibleGroups.length) { %>
-      <div class="empty-state">배정된 과제가 없습니다.</div>
+      <div class="empty-state">등록된 미션이 없습니다.</div>
     <% } else { %>
-    <div class="week-group-actions">
-      <span class="small-text muted-text">주차를 펼친 뒤 작가별 항목을 열면 해당 작가에게 배정된 과제만 확인할 수 있습니다.</span>
-      <div class="actions">
-        <button class="button button-secondary button-small" type="button" data-week-expand-all>전체 펼치기</button>
-        <button class="button button-secondary button-small" type="button" data-week-collapse-all>전체 접기</button>
-      </div>
-    </div>
-    <div class="week-groups" data-week-groups>
-      <% visibleGroups.forEach((group) => { %>
-        <section class="week-group <%= group.isCurrent ? 'is-current is-expanded' : '' %>" data-week-group>
-          <button class="week-group-header" type="button" data-week-toggle aria-expanded="<%= group.isCurrent ? 'true' : 'false' %>">
-            <span class="week-group-heading">
-              <strong><%= group.week %>주차</strong>
-              <span class="badge badge-info"><%= group.assignments.length %>개 과제</span>
-              <% if (group.applicableCount) { %><span class="small-text muted-text"><%= group.submittedCount %>/<%= group.applicableCount %> 제출</span><% } %>
-            </span>
-            <span class="week-group-state"><%= group.isCurrent ? '현재 진행 중' : '상세 보기' %><span class="week-toggle-icon" aria-hidden="true">⌄</span></span>
-          </button>
-          <div class="week-group-content" data-week-content<% if (!group.isCurrent) { %> hidden<% } %>>
-            <div class="week-dashboard">
-              <div class="artist-week-list">
+      <div class="mission-list">
+        <% visibleGroups.forEach((group) => { %>
+          <% const mission = group.assignments[0]; %>
+          <article class="mission-card" data-mission-card>
+            <div class="mission-card-header">
+              <div>
+                <div class="eyebrow">MISSION <%= group.roundNo %></div>
+                <h2>미션 <%= group.roundNo %></h2>
+                <h3><%= mission.title %></h3>
+                <p class="muted-text"><%= mission.topic %></p>
+              </div>
+              <div class="mission-card-meta">
+                <% if (group.isCurrent) { %><span class="badge badge-info">현재 진행 중</span><% } %>
+                <span class="small-text muted-text">마감 <%= formatDateTime(mission.due_at) %></span>
+              </div>
+            </div>
+
+            <div class="mission-overview" aria-label="미션 <%= group.roundNo %> 전체 현황">
+              <div class="mission-overview-heading">
+                <strong>전체 현황</strong>
+                <strong><%= group.submittedCount %>/<%= group.applicableCount %> 완료 · <%= group.progressRate %>%</strong>
+              </div>
+              <div class="progress" role="progressbar" aria-label="미션 <%= group.roundNo %> 완료율" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<%= group.progressRate %>">
+                <div class="progress-bar" style="width:<%= group.progressRate %>%"></div>
+              </div>
+            </div>
+
+            <div class="mission-artists">
+              <div class="mission-artists-heading">
+                <h3>작가별 현황</h3>
+                <span class="small-text muted-text">모든 활동 작가 공통 미션</span>
+              </div>
+              <div class="mission-artist-list">
                 <% dashboard.artists.forEach((artist) => { %>
-                  <% const applicableAssignments = group.assignments.filter((assignment) => artist.weeks.find((item) => item.assignmentId === assignment.id)?.applicable); %>
-                  <article class="artist-week-dropdown" data-week-artist-dropdown>
-                    <button class="artist-week-toggle" type="button" data-week-artist-toggle aria-expanded="false">
-                      <span class="artist-week-toggle-main">
-                        <strong><%= displayName(artist.name) %></strong>
-                        <span class="progress-cell">
-                          <span class="progress" title="<%= artist.progressRate %>%"><span class="progress-bar" style="width:<%= artist.progressRate %>%"></span></span>
-                          <span class="small-text"><%= artist.progressRate %>%</span>
-                        </span>
-                      </span>
-                      <span class="week-group-state">과제 보기<span class="week-toggle-icon" aria-hidden="true">⌄</span></span>
-                    </button>
-                    <div class="artist-week-content" data-week-artist-content hidden>
-                      <% if (!applicableAssignments.length) { %>
-                        <div class="empty-state compact-empty">배정된 과제가 없습니다.</div>
+                  <% const assignmentStatus = artist.assignmentStatuses.find((item) => item.assignmentId === mission.id); %>
+                  <% const completed = ['SUBMITTED', 'CONFIRMED'].includes(assignmentStatus.status); %>
+                  <div class="mission-artist-row">
+                    <div class="mission-artist-main">
+                      <strong><%= displayName(artist.name) %></strong>
+                      <% if (assignmentStatus.submittedAt) { %>
+                        <span class="small-text muted-text">제출 <%= formatDateTime(assignmentStatus.submittedAt) %></span>
                       <% } else { %>
-                        <div class="assignment-list">
-                          <% applicableAssignments.forEach((assignment) => { %>
-                            <% const week = artist.weeks.find((item) => item.assignmentId === assignment.id); %>
-                            <div class="assignment-list-item">
-                              <div class="assignment-list-main">
-                                <strong class="assignment-list-title"><%= assignment.title %></strong>
-                                <span class="small-text muted-text"><%= assignment.topic %> · 마감 <%= formatDateTime(assignment.due_at) %></span>
-                              </div>
-                              <% if (week.postUrl) { %>
-                                <a class="badge badge-<%= statusClass(week.status) %>" href="<%= week.postUrl %>" target="_blank" rel="noopener noreferrer"><%= statusLabel(week.status) %></a>
-                              <% } else { %>
-                                <span class="badge badge-<%= statusClass(week.status) %>"><%= statusLabel(week.status) %></span>
-                              <% } %>
-                            </div>
-                          <% }) %>
-                        </div>
+                        <span class="small-text muted-text">아직 제출하지 않았습니다.</span>
                       <% } %>
                     </div>
-                  </article>
+                    <% if (assignmentStatus.postUrl) { %>
+                      <a class="badge badge-<%= statusClass(assignmentStatus.status) %>" href="<%= assignmentStatus.postUrl %>" target="_blank" rel="noopener noreferrer"><%= completed ? '완료 · 게시물 보기' : statusLabel(assignmentStatus.status) %></a>
+                    <% } else { %>
+                      <span class="badge badge-<%= statusClass(assignmentStatus.status) %>"><%= completed ? '완료' : '미완료' %></span>
+                    <% } %>
+                  </div>
                 <% }) %>
               </div>
             </div>
-          </div>
-        </section>
-      <% }) %>
-    </div>
+          </article>
+        <% }) %>
+      </div>
     <% } %>
   <% } %>
 </section>

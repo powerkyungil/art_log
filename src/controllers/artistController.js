@@ -98,7 +98,7 @@ export const artistController = {
   async showSubmissionForm(req, res) {
     const assignment = await assignmentRepository.findByIdForArtist(req.query.assignment_id, req.artist.id);
     if (!assignment) {
-      return res.status(404).render('error', { title: '과제를 찾을 수 없습니다', message: '제출할 수 있는 과제가 없습니다.' });
+      return res.status(404).render('error', { title: '미션을 찾을 수 없습니다', message: '제출할 수 있는 미션이 없습니다.' });
     }
     if (new Date(assignment.start_at).getTime() > Date.now()) {
       return res.status(422).render('error', { title: '아직 제출할 수 없습니다', message: '제출 시작일 이후에 제출할 수 있습니다.' });
@@ -108,7 +108,7 @@ export const artistController = {
       return res.status(422).render('error', { title: '수정할 수 없습니다', message: '관리자 확인완료 후에는 제출 내용을 수정할 수 없습니다.' });
     }
     return res.render('artist/submission-form', {
-      title: submission ? '제출 내용 수정' : '과제 제출',
+      title: submission ? '제출 내용 수정' : '미션 제출',
       assignment,
       submission,
       channels: CHANNELS,
@@ -123,10 +123,10 @@ export const artistController = {
       upload_channel: required(req.body.upload_channel),
       post_url: required(req.body.post_url)
     };
-    if (!assignment) return res.status(404).render('error', { title: '과제를 찾을 수 없습니다', message: '지정된 작가만 제출할 수 있는 과제이거나 존재하지 않는 과제입니다.' });
+    if (!assignment) return res.status(404).render('error', { title: '미션을 찾을 수 없습니다', message: '존재하지 않거나 제출할 수 없는 미션입니다.' });
     if (new Date(assignment.start_at).getTime() > Date.now()) return res.status(422).render('error', { title: '아직 제출할 수 없습니다', message: '제출 시작일 이후에 제출할 수 있습니다.' });
     const error = validateSubmission(form);
-    if (error) return renderArtistError(res, 'artist/submission-form', { title: '과제 제출', assignment, submission: form, channels: CHANNELS }, error);
+    if (error) return renderArtistError(res, 'artist/submission-form', { title: '미션 제출', assignment, submission: form, channels: CHANNELS }, error);
 
     const existing = await submissionRepository.findByArtistAndAssignment(req.artist.id, assignment.id);
     if (existing) {
@@ -143,7 +143,7 @@ export const artistController = {
       uploadChannel: form.upload_channel,
       postUrl: form.post_url
     });
-    req.flash('success', '과제가 제출되었습니다.');
+    req.flash('success', '미션이 제출되었습니다.');
     return res.redirect(`/artist/submissions/${submission.id}/success`);
   },
 
@@ -164,7 +164,7 @@ export const artistController = {
     const submission = await submissionRepository.findById(req.params.id);
     if (!submission || submission.artist_id !== req.artist.id) return res.status(404).render('error', { title: '제출 내역을 찾을 수 없습니다', message: '본인의 제출 내역만 수정할 수 있습니다.' });
     const assignment = await assignmentRepository.findByIdForArtist(submission.assignment_id, req.artist.id);
-    if (!assignment) return res.status(422).render('error', { title: '수정할 수 없습니다', message: '현재 이 과제의 지정 작가가 아니므로 수정할 수 없습니다.' });
+    if (!assignment) return res.status(422).render('error', { title: '수정할 수 없습니다', message: '현재 수정할 수 없는 미션입니다.' });
     if (submission.status === 'CONFIRMED') return res.status(422).render('error', { title: '수정할 수 없습니다', message: '관리자 확인완료 후에는 수정할 수 없습니다.' });
     return res.render('artist/submission-form', {
       title: '제출 내용 수정',
@@ -184,7 +184,7 @@ export const artistController = {
     };
     if (!submission || submission.artist_id !== req.artist.id) return res.status(404).render('error', { title: '제출 내역을 찾을 수 없습니다', message: '본인의 제출 내역만 수정할 수 있습니다.' });
     const assignment = await assignmentRepository.findByIdForArtist(submission.assignment_id, req.artist.id);
-    if (!assignment) return res.status(422).render('error', { title: '수정할 수 없습니다', message: '현재 이 과제의 지정 작가가 아니므로 수정할 수 없습니다.' });
+    if (!assignment) return res.status(422).render('error', { title: '수정할 수 없습니다', message: '현재 수정할 수 없는 미션입니다.' });
     if (submission.status === 'CONFIRMED') return res.status(422).render('error', { title: '수정할 수 없습니다', message: '관리자 확인완료 후에는 수정할 수 없습니다.' });
     const error = validateSubmission(form);
     if (error) return renderArtistError(res, 'artist/submission-form', { title: '제출 내용 수정', assignment: submission, submission: form, channels: CHANNELS }, error);

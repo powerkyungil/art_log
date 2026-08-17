@@ -12,10 +12,36 @@
     <div class="form-grid">
       <label>작가명 *<input type="text" name="name" value="<%= artist.name || '' %>" maxlength="100" required></label>
       <label>연락처<input type="text" name="phone" value="<%= artist.phone || '' %>" maxlength="40"></label>
-      <label>SNS 계정<input type="text" name="sns_account" value="<%= artist.sns_account || '' %>" maxlength="255" placeholder="예: @account"></label>
       <label>활동 상태<select name="status">
         <% statuses.forEach((status) => { %><option value="<%= status %>" <%= artist.status === status ? 'selected' : '' %>><%= statusLabel(status) %></option><% }) %>
       </select></label>
+      <label class="full">기존 SNS 계정/아이디 (선택)<input type="text" name="sns_account" value="<%= artist.sns_account || '' %>" maxlength="255" placeholder="예: @account 또는 이메일"></label>
+      <div class="full artist-links-field">
+        <span class="detail-label">플랫폼별 URL</span>
+        <p class="small-text muted-text">인스타그램, 유튜브 등 플랫폼별 링크를 여러 개 등록할 수 있습니다.</p>
+        <div class="artist-link-list" data-artist-link-list>
+          <% const linkRows = artist.links?.length ? artist.links : [{ platform: 'Instagram', url: '' }]; %>
+          <% linkRows.forEach((link) => { %>
+            <div class="artist-link-row" data-artist-link>
+              <label>플랫폼<select name="link_platform">
+                <% platforms.forEach((platform) => { %><option value="<%= platform %>" <%= link.platform === platform ? 'selected' : '' %>><%= platform %></option><% }) %>
+              </select></label>
+              <label>URL<input type="url" name="link_url" value="<%= link.url || '' %>" placeholder="https://..." inputmode="url"></label>
+              <button class="button button-secondary button-small" type="button" data-remove-artist-link>삭제</button>
+            </div>
+          <% }) %>
+        </div>
+        <template data-artist-link-template>
+          <div class="artist-link-row" data-artist-link>
+            <label>플랫폼<select name="link_platform">
+              <% platforms.forEach((platform) => { %><option value="<%= platform %>"><%= platform %></option><% }) %>
+            </select></label>
+            <label>URL<input type="url" name="link_url" placeholder="https://..." inputmode="url"></label>
+            <button class="button button-secondary button-small" type="button" data-remove-artist-link>삭제</button>
+          </div>
+        </template>
+        <button class="button button-secondary button-small artist-link-add" type="button" data-add-artist-link>+ 플랫폼 URL 추가</button>
+      </div>
     </div>
     <div class="actions"><button class="button button-primary" type="submit"><%= mode === 'create' ? '작가 등록' : '수정 저장' %></button><a class="button button-secondary" href="/admin/artists">취소</a></div>
   </form>

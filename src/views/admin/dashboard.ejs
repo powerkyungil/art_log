@@ -4,10 +4,10 @@
   <div>
     <div class="eyebrow">OVERVIEW</div>
     <h1>전체 진행률</h1>
-    <p>작가별 전체 과제 진행률을 한눈에 확인할 수 있습니다.</p>
+    <p>작가별 전체 미션 진행률을 한눈에 확인할 수 있습니다.</p>
   </div>
   <div class="actions">
-    <a class="button button-secondary" href="/admin/progress">과제 진행 현황</a>
+    <a class="button button-secondary" href="/admin/progress">미션 진행 현황</a>
     <a class="button button-primary" href="/admin/artists/new">작가 등록</a>
   </div>
 </div>
@@ -15,11 +15,11 @@
 <section class="section-card progress-overview-card">
   <div class="section-title">
     <h2>작가별 전체 진행률</h2>
-    <span class="small-text muted-text">공개된 과제 기준</span>
+    <span class="small-text muted-text">공개된 미션 기준</span>
   </div>
 
   <% if (!dashboard.assignments.length) { %>
-    <div class="empty-state">공개된 과제를 먼저 등록해주세요.</div>
+    <div class="empty-state">공개된 미션을 먼저 등록해주세요.</div>
   <% } else if (!dashboard.artists.length) { %>
     <div class="empty-state">표시할 작가가 없습니다.</div>
   <% } else { %>
