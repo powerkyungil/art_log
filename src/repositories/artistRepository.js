@@ -5,12 +5,12 @@ export const artistRepository = {
     const conditions = [];
     const params = [];
     if (search) {
-      conditions.push(`(a.name LIKE ? OR a.phone LIKE ? OR a.sns_account LIKE ? OR EXISTS (
+      conditions.push(`(a.name LIKE ? OR a.phone LIKE ? OR EXISTS (
         SELECT 1 FROM artist_links al
         WHERE al.artist_id = a.id AND (al.platform LIKE ? OR al.url LIKE ?)
       ))`);
       const keyword = `%${search}%`;
-      params.push(keyword, keyword, keyword, keyword, keyword);
+      params.push(keyword, keyword, keyword, keyword);
     }
     if (status) {
       conditions.push('a.status = ?');
@@ -18,7 +18,7 @@ export const artistRepository = {
     }
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const [rows] = await pool.execute(
-      `SELECT a.id, a.name, a.phone, a.sns_account, a.access_token_version, a.status, a.created_at, a.updated_at
+      `SELECT a.id, a.name, a.phone, a.access_token_version, a.status, a.created_at, a.updated_at
        FROM artists a ${where} ORDER BY a.name ASC, a.id DESC`,
       params
     );
@@ -49,12 +49,12 @@ export const artistRepository = {
     return rows[0] || null;
   },
 
-  async create({ name, phone, snsAccount, status, tokenHash, passwordHash, links = [] }) {
+  async create({ name, phone, status, tokenHash, passwordHash, links = [] }) {
     const artistId = await withTransaction(async (connection) => {
       const [result] = connection.execute(
-        `INSERT INTO artists (name, password_hash, phone, sns_account, status, access_token_hash)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [name, passwordHash, phone || null, snsAccount || null, status || 'ACTIVE', tokenHash]
+        `INSERT INTO artists (name, password_hash, phone, status, access_token_hash)
+         VALUES (?, ?, ?, ?, ?)`,
+        [name, passwordHash, phone || null, status || 'ACTIVE', tokenHash]
       );
       replaceLinks(connection, result.insertId, links);
       return result.insertId;
@@ -62,12 +62,12 @@ export const artistRepository = {
     return this.findById(artistId);
   },
 
-  async update(id, { name, phone, snsAccount, status, links = [] }) {
+  async update(id, { name, phone, status, links = [] }) {
     await withTransaction(async (connection) => {
       connection.execute(
-        `UPDATE artists SET name = ?, phone = ?, sns_account = ?, status = ?,
+        `UPDATE artists SET name = ?, phone = ?, status = ?,
          updated_at = datetime('now', 'localtime') WHERE id = ?`,
-        [name, phone || null, snsAccount || null, status, id]
+        [name, phone || null, status, id]
       );
       replaceLinks(connection, id, links);
     });

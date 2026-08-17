@@ -7,7 +7,7 @@
 
 <section class="section-card">
   <form method="get" action="/admin/artists" class="filters">
-    <label class="filter-search">검색<input type="search" name="search" value="<%= filters.search %>" placeholder="이름, 연락처, SNS 계정"></label>
+    <label class="filter-search">검색<input type="search" name="search" value="<%= filters.search %>" placeholder="이름, 연락처, 플랫폼 URL"></label>
     <label>활동 상태<select name="status">
       <option value="">전체 상태</option>
       <% statuses.forEach((status) => { %><option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= statusLabel(status) %></option><% }) %>
@@ -20,15 +20,14 @@
       <tbody>
         <% artists.forEach((artist) => { %>
           <tr>
-            <td><a href="/admin/artists/<%= artist.id %>"><strong><%= displayName(artist.name) %></strong></a></td>
+            <td class="artist-name-cell"><a href="/admin/artists/<%= artist.id %>"><strong><%= displayName(artist.name) %></strong></a></td>
             <td><%= artist.phone || '-' %></td>
-            <td>
+            <td class="artist-url-cell">
               <% if (artist.links?.length) { %>
                 <div class="artist-link-summary">
                   <% artist.links.forEach((link) => { %><div class="artist-link-summary-item"><span class="badge badge-info"><%= link.platform %></span><a href="<%= link.url %>" target="_blank" rel="noopener noreferrer"><%= link.url %></a></div><% }) %>
                 </div>
               <% } else { %>-<% } %>
-              <% if (artist.sns_account) { %><span class="legacy-sns-account">기존 계정: <%= artist.sns_account %></span><% } %>
             </td>
             <td><span class="badge badge-<%= statusClass(artist.status) %>"><%= statusLabel(artist.status) %></span></td>
             <td><%= formatDate(artist.created_at) %></td>

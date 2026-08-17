@@ -26,6 +26,10 @@ if (uninitializedArtists.length) {
   ).run(initialPasswordHash);
 }
 
+if (artistColumns.some((column) => column.name === 'sns_account')) {
+  database.exec('ALTER TABLE artists DROP COLUMN sns_account');
+}
+
 database.exec(`
   CREATE TABLE IF NOT EXISTS artist_links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

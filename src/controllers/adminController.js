@@ -160,7 +160,7 @@ export const adminController = {
     return res.render('admin/artists/form', {
       title: '작가 등록',
       mode: 'create',
-      artist: { name: '', phone: '', sns_account: '', status: 'ACTIVE', links: [{ platform: 'Instagram', url: '' }] },
+      artist: { name: '', phone: '', status: 'ACTIVE', links: [{ platform: 'Instagram', url: '' }] },
       statuses: ARTIST_STATUSES,
       platforms: SOCIAL_PLATFORMS,
       error: null
@@ -192,7 +192,6 @@ export const adminController = {
     const artist = await artistRepository.create({
       name,
       phone: required(req.body.phone),
-      snsAccount: required(req.body.sns_account),
       status: ARTIST_STATUSES.includes(req.body.status) ? req.body.status : 'ACTIVE',
       tokenHash,
       passwordHash,
@@ -244,7 +243,6 @@ export const adminController = {
     await artistRepository.update(req.params.id, {
       name,
       phone: required(req.body.phone),
-      snsAccount: required(req.body.sns_account),
       status,
       links: linkForm.links
     });

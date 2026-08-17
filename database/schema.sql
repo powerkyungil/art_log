@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS artists (
   name TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   phone TEXT,
-  sns_account TEXT,
   access_token_hash TEXT NOT NULL UNIQUE,
   access_token_version INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'INACTIVE', 'COMPLETED')),

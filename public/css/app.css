@@ -122,7 +122,8 @@ tr:last-child td { border-bottom: 0; }
 .artist-link-summary-item { display: flex; align-items: center; gap: 7px; min-width: 0; }
 .artist-link-summary-item a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .artist-link-summary-item .badge { flex: 0 0 auto; }
-.legacy-sns-account { display: block; margin-top: 5px; color: var(--muted); font-size: .8rem; }
+.artist-name-cell { min-width: 128px; white-space: nowrap; }
+.artist-url-cell { overflow-wrap: anywhere; }
 .common-mission-target { display: grid; gap: 8px; }
 .common-mission-target-box { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; background: #fafafa; }
 .mission-list { display: grid; gap: 16px; }
