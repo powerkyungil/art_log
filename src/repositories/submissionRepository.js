@@ -92,7 +92,32 @@ export const submissionRepository = {
     return attachPostUrls(rows, 'submission_id');
   },
 
-  async listSubmittedForAssignment(assignmentId, { excludeArtistId = null } = {}) {
+  async listSubmittedForAssignment(assignmentId, { excludeArtistId = null, limit = null, offset = 0 } = {}) {
+    const conditions = [
+      's.assignment_id = ?',
+      "a.status = 'ACTIVE'",
+      "s.status IN ('SUBMITTED', 'CONFIRMED')"
+    ];
+    const params = [assignmentId];
+    if (excludeArtistId !== null) {
+      conditions.push('s.artist_id <> ?');
+      params.push(excludeArtistId);
+    }
+    const pagination = Number.isInteger(limit) ? ' LIMIT ? OFFSET ?' : '';
+    if (pagination) params.push(limit, offset);
+    const [rows] = await pool.execute(
+      `SELECT s.id AS submission_id, s.artist_id, a.name AS artist_name,
+              s.upload_channel, s.post_url, s.status, s.submitted_at
+       FROM submissions s
+       JOIN artists a ON a.id = s.artist_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY s.submitted_at DESC, s.id DESC${pagination}`,
+      params
+    );
+    return attachPostUrls(rows, 'submission_id');
+  },
+
+  async countSubmittedForAssignment(assignmentId, { excludeArtistId = null } = {}) {
     const conditions = [
       's.assignment_id = ?',
       "a.status = 'ACTIVE'",
@@ -104,15 +129,13 @@ export const submissionRepository = {
       params.push(excludeArtistId);
     }
     const [rows] = await pool.execute(
-      `SELECT s.id AS submission_id, s.artist_id, a.name AS artist_name,
-              s.upload_channel, s.post_url, s.status, s.submitted_at
+      `SELECT COUNT(*) AS count
        FROM submissions s
        JOIN artists a ON a.id = s.artist_id
-       WHERE ${conditions.join(' AND ')}
-       ORDER BY s.submitted_at DESC, s.id DESC`,
+       WHERE ${conditions.join(' AND ')}`,
       params
     );
-    return attachPostUrls(rows, 'submission_id');
+    return Number(rows[0].count);
   },
 
   async list({ search = '', status = '', assignmentId = '', channel = '', limit = null, offset = 0 } = {}) {

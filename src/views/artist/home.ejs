@@ -1,5 +1,6 @@
 <%- include('../partials/artist-head', { title }) %>
 <% const visiblePeerSubmissions = typeof peerSubmissions !== 'undefined' && Array.isArray(peerSubmissions) ? peerSubmissions : []; %>
+<% const visiblePeerPagination = typeof peerPagination !== 'undefined' ? peerPagination : null; %>
 
 <section class="card hero-card" style="margin-bottom:18px">
   <div class="eyebrow">MY ACTIVITY</div>
@@ -38,14 +39,14 @@
           <% } %>
         </div>
 
-        <div class="peer-submissions">
+        <div class="peer-submissions" id="peer-submissions">
           <div class="peer-submissions-heading">
             <div>
               <div class="eyebrow">MISSION INSPIRATION</div>
               <h3>다른 작가의 게시물 둘러보기</h3>
               <p class="small-text muted-text">같은 미션을 완료한 작가들의 결과물을 직접 확인해보세요.</p>
             </div>
-            <span class="badge badge-info"><%= visiblePeerSubmissions.length %>명</span>
+            <span class="badge badge-info"><%= visiblePeerPagination ? visiblePeerPagination.totalItems : visiblePeerSubmissions.length %>명</span>
           </div>
           <% if (!visiblePeerSubmissions.length) { %>
             <div class="empty-state peer-submissions-empty">아직 이 미션을 제출한 다른 작가가 없습니다.</div>
@@ -67,6 +68,20 @@
                 </div>
               <% }) %>
             </div>
+          <% } %>
+          <% if (visiblePeerPagination && visiblePeerPagination.totalPages > 1) { %>
+            <nav class="pagination peer-submission-pagination" aria-label="다른 작가 게시물 페이지">
+              <span class="small-text muted-text">전체 <%= visiblePeerPagination.totalItems %>명 · <%= visiblePeerPagination.startItem %>-<%= visiblePeerPagination.endItem %></span>
+              <div class="pagination-actions">
+                <% if (visiblePeerPagination.previousUrl) { %>
+                  <a class="button button-secondary button-small" href="<%= visiblePeerPagination.previousUrl %>">이전</a>
+                <% } %>
+                <span class="pagination-current"><%= visiblePeerPagination.page %> / <%= visiblePeerPagination.totalPages %></span>
+                <% if (visiblePeerPagination.nextUrl) { %>
+                  <a class="button button-secondary button-small" href="<%= visiblePeerPagination.nextUrl %>">다음</a>
+                <% } %>
+              </div>
+            </nav>
           <% } %>
         </div>
       <% } %>

@@ -7,6 +7,25 @@ import { displayName } from '../utils/format.js';
 import { isValidDate, isValidUrl, required } from '../utils/validation.js';
 
 const CHANNELS = ['Instagram', 'YouTube', 'Blog', 'TikTok', '기타'];
+const PEER_SUBMISSIONS_PER_PAGE = 20;
+
+function createPeerPagination(totalItems, requestedPage) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / PEER_SUBMISSIONS_PER_PAGE));
+  const parsedPage = Number.parseInt(requestedPage, 10);
+  const page = Math.min(Math.max(Number.isInteger(parsedPage) ? parsedPage : 1, 1), totalPages);
+  const pageUrl = (targetPage) => `/artist?peer_page=${targetPage}#peer-submissions`;
+  return {
+    page,
+    perPage: PEER_SUBMISSIONS_PER_PAGE,
+    offset: (page - 1) * PEER_SUBMISSIONS_PER_PAGE,
+    totalItems,
+    totalPages,
+    startItem: totalItems ? (page - 1) * PEER_SUBMISSIONS_PER_PAGE + 1 : 0,
+    endItem: Math.min(page * PEER_SUBMISSIONS_PER_PAGE, totalItems),
+    previousUrl: page > 1 ? pageUrl(page - 1) : null,
+    nextUrl: page < totalPages ? pageUrl(page + 1) : null
+  };
+}
 
 function regenerateSession(request) {
   return new Promise((resolve, reject) => {
@@ -98,15 +117,23 @@ export const artistController = {
       assignmentRepository.findNextForArtist(req.artist.id),
       noticeRepository.list({ includeHidden: false })
     ]);
-    const [submission, activity, peerSubmissions] = await Promise.all([
+    const [submission, activity, peerSubmissionCount] = await Promise.all([
       currentAssignment
         ? submissionRepository.findByArtistAndAssignment(req.artist.id, currentAssignment.id)
         : null,
       submissionRepository.listForArtist(req.artist.id, { limit: 10, urgentFirst: true }),
       currentAssignment
-        ? submissionRepository.listSubmittedForAssignment(currentAssignment.id, { excludeArtistId: req.artist.id })
-        : []
+        ? submissionRepository.countSubmittedForAssignment(currentAssignment.id, { excludeArtistId: req.artist.id })
+        : 0
     ]);
+    const peerPagination = createPeerPagination(peerSubmissionCount, req.query.peer_page);
+    const peerSubmissions = currentAssignment
+      ? await submissionRepository.listSubmittedForAssignment(currentAssignment.id, {
+        excludeArtistId: req.artist.id,
+        limit: peerPagination.perPage,
+        offset: peerPagination.offset
+      })
+      : [];
     const currentSubmission = submission ? { ...submission, submission_id: submission.id } : null;
     return res.render('artist/home', {
       title: `${displayName(req.artist.name)} 홈`,
@@ -115,6 +142,7 @@ export const artistController = {
       notices: notices.slice(0, 5),
       activity,
       peerSubmissions,
+      peerPagination,
       currentSubmission
     });
   },
