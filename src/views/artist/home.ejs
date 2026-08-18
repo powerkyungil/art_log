@@ -15,9 +15,17 @@
         <div class="empty-state">현재 진행 중인 미션이 없습니다.</div>
       <% } else { %>
         <div class="assignment-card">
-          <h2><%= currentAssignment.title %></h2>
-          <p class="muted-text"><%= currentAssignment.topic %></p>
-          <% if (currentAssignment.description) { %><p class="notice-content"><%= currentAssignment.description %></p><% } %>
+          <details class="current-mission-details">
+            <summary class="current-mission-summary">
+              <span class="current-mission-summary-main"><strong>미션 내용</strong><span class="current-mission-summary-title"><%= currentAssignment.title %></span></span>
+              <span class="current-mission-icon" aria-hidden="true"></span>
+            </summary>
+            <div class="current-mission-content">
+              <div class="current-mission-row"><span class="detail-label">제목</span><strong><%= currentAssignment.title %></strong></div>
+              <div class="current-mission-row"><span class="detail-label">주제</span><span><%= currentAssignment.topic %></span></div>
+              <div class="current-mission-row"><span class="detail-label">설명</span><span class="current-mission-description"><%= currentAssignment.description || '등록된 미션 설명이 없습니다.' %></span></div>
+            </div>
+          </details>
           <div class="assignment-meta"><span>마감 <strong><%= formatDateTime(currentAssignment.due_at) %></strong></span><% if (currentAssignment.recommended_channel) { %><span>권장 채널 <strong><%= currentAssignment.recommended_channel %></strong></span><% } %></div>
           <% if (currentSubmission) { %>
             <div class="actions">
@@ -32,11 +40,11 @@
     </section>
 
     <section class="section-card">
-      <div class="section-title"><h2>나의 진행 현황</h2><a href="/artist/submissions" class="small-text">전체 보기</a></div>
+      <div class="section-title"><div><h2>나의 진행 현황</h2><span class="small-text muted-text">마감 임박순 · 최대 10개</span></div><a href="/artist/submissions" class="small-text">전체 보기</a></div>
       <% if (!activity.length) { %><div class="empty-state">아직 공개된 미션이 없습니다.</div><% } else { %>
         <div class="activity-list">
           <% activity.forEach((item) => { %><div class="activity-row">
-            <div class="activity-main"><strong>미션 <%= item.round_no %> · <%= item.title %></strong><span><%= item.upload_date || '제출 전' %> · <%= item.upload_channel || '채널 미선택' %></span></div>
+            <div class="activity-main"><strong class="activity-title" title="미션 <%= item.round_no %> · <%= item.title %>">미션 <%= item.round_no %> · <%= item.title %></strong><span><%= item.upload_date || '제출 전' %> · <%= item.upload_channel || '채널 미선택' %></span></div>
             <span class="badge badge-<%= statusClass(item.status || 'NOT_SUBMITTED') %>"><%= statusLabel(item.status || 'NOT_SUBMITTED') %></span>
           </div><% }) %>
         </div>
@@ -48,7 +56,23 @@
     <section class="section-card">
       <div class="section-title"><h2>공지사항</h2></div>
       <% if (!notices.length) { %><div class="empty-state">등록된 공지가 없습니다.</div><% } else { %>
-        <div class="notice-list"><% notices.forEach((notice) => { %><article class="notice-item"><div class="notice-title"><h3><% if (notice.is_pinned) { %><span class="badge badge-info">고정</span> <% } %><%= notice.title %></h3></div><div class="notice-content"><%= notice.content %></div><div class="muted-text small-text" style="margin-top:8px"><%= formatDateTime(notice.published_at || notice.created_at) %></div></article><% }) %></div>
+        <div class="notice-list">
+          <% notices.forEach((notice) => { %>
+            <details class="notice-item artist-notice">
+              <summary class="artist-notice-summary">
+                <span class="artist-notice-heading">
+                  <% if (notice.is_pinned) { %><span class="badge badge-info">고정</span><% } %>
+                  <strong class="artist-notice-title" title="<%= notice.title %>"><%= notice.title %></strong>
+                </span>
+                <span class="artist-notice-icon" aria-hidden="true"></span>
+              </summary>
+              <div class="artist-notice-body">
+                <div class="notice-content"><%= notice.content %></div>
+                <div class="muted-text small-text artist-notice-date"><%= formatDateTime(notice.published_at || notice.created_at) %></div>
+              </div>
+            </details>
+          <% }) %>
+        </div>
       <% } %>
     </section>
 

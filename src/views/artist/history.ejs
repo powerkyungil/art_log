@@ -7,17 +7,35 @@
 
 <section class="section-card">
   <% if (!activity.length) { %><div class="empty-state">공개된 미션이 없습니다.</div><% } else { %>
-    <div class="table-wrap"><table>
-      <thead><tr><th>미션</th><th>제목</th><th>업로드 날짜</th><th>채널</th><th>게시물</th><th>상태</th><th></th></tr></thead>
-      <tbody>
-        <% activity.forEach((item) => { %><tr>
-          <td>미션 <%= item.round_no %></td><td><%= item.title %></td><td><%= item.upload_date || '-' %></td><td><%= item.upload_channel || '-' %></td>
-          <td><%- include('../partials/submission-urls', { urls: item.post_urls, compact: true }) %></td>
-          <td><span class="badge badge-<%= statusClass(item.status || 'NOT_SUBMITTED') %>"><%= statusLabel(item.status || 'NOT_SUBMITTED') %></span></td>
-          <td><% if (item.submission_id && item.status !== 'CONFIRMED') { %><a class="button button-secondary button-small" href="/artist/submissions/<%= item.submission_id %>/edit">수정</a><% } else if (!item.submission_id && item.start_at && new Date(item.start_at).getTime() <= Date.now()) { %><a class="button button-primary button-small" href="/artist/submissions/new?assignment_id=<%= item.assignment_id %>">제출</a><% } %></td>
-        </tr><% }) %>
-      </tbody>
-    </table></div>
+    <div class="artist-history-list">
+      <% activity.forEach((item) => { %>
+        <details class="artist-history-item">
+          <summary class="artist-history-summary">
+            <span class="artist-history-summary-main">
+              <strong>미션 <%= item.round_no %></strong>
+              <span class="artist-history-title"><%= item.title %></span>
+            </span>
+            <span class="artist-history-summary-side">
+              <span class="badge badge-<%= statusClass(item.status || 'NOT_SUBMITTED') %>"><%= statusLabel(item.status || 'NOT_SUBMITTED') %></span>
+              <span class="artist-history-icon" aria-hidden="true"></span>
+            </span>
+          </summary>
+          <div class="artist-history-body">
+            <div class="artist-history-details">
+              <div class="artist-history-detail full"><span class="detail-label">제목</span><strong><%= item.title %></strong></div>
+              <div class="artist-history-detail full"><span class="detail-label">주제</span><span><%= item.topic %></span></div>
+              <div class="artist-history-detail full"><span class="detail-label">내용</span><span class="artist-history-description"><%= item.description || '등록된 미션 설명이 없습니다.' %></span></div>
+              <div class="artist-history-detail"><span class="detail-label">업로드 날짜</span><span><%= item.upload_date || '-' %></span></div>
+              <div class="artist-history-detail"><span class="detail-label">채널</span><span><%= item.upload_channel || '-' %></span></div>
+              <div class="artist-history-detail full"><span class="detail-label">게시물</span><%- include('../partials/submission-urls', { urls: item.post_urls, compact: true }) %></div>
+            </div>
+            <div class="actions artist-history-actions">
+              <% if (item.submission_id && item.status !== 'CONFIRMED') { %><a class="button button-secondary button-small" href="/artist/submissions/<%= item.submission_id %>/edit">제출 내용 수정</a><% } else if (!item.submission_id && item.start_at && new Date(item.start_at).getTime() <= Date.now()) { %><a class="button button-primary button-small" href="/artist/submissions/new?assignment_id=<%= item.assignment_id %>">미션 제출</a><% } %>
+            </div>
+          </div>
+        </details>
+      <% }) %>
+    </div>
   <% } %>
 </section>
 

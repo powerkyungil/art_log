@@ -93,17 +93,18 @@ export const artistController = {
   },
 
   async home(req, res) {
-    const [currentAssignment, nextAssignment, notices, activity] = await Promise.all([
+    const [currentAssignment, nextAssignment, notices] = await Promise.all([
       assignmentRepository.findCurrentForArtist(req.artist.id),
       assignmentRepository.findNextForArtist(req.artist.id),
-      noticeRepository.list({ includeHidden: false }),
-      submissionRepository.listForArtist(req.artist.id)
+      noticeRepository.list({ includeHidden: false })
     ]);
-    const currentSubmission = currentAssignment
-      ? activity.find((item) => item.assignment_id === currentAssignment.id)?.submission_id
-        ? activity.find((item) => item.assignment_id === currentAssignment.id)
-        : null
-      : null;
+    const [submission, activity] = await Promise.all([
+      currentAssignment
+        ? submissionRepository.findByArtistAndAssignment(req.artist.id, currentAssignment.id)
+        : null,
+      submissionRepository.listForArtist(req.artist.id, { limit: 10, urgentFirst: true })
+    ]);
+    const currentSubmission = submission ? { ...submission, submission_id: submission.id } : null;
     return res.render('artist/home', {
       title: `${displayName(req.artist.name)} 홈`,
       currentAssignment,

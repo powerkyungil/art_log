@@ -1,0 +1,14 @@
+<% if (pagination) { %>
+  <nav class="pagination" aria-label="목록 페이지">
+    <span class="small-text muted-text">전체 <%= pagination.totalItems %>개 · <%= pagination.startItem %>-<%= pagination.endItem %></span>
+    <div class="pagination-actions">
+      <% if (pagination.previousUrl) { %>
+        <a class="button button-secondary button-small" href="<%= pagination.previousUrl %>">이전</a>
+      <% } %>
+      <span class="pagination-current"><%= pagination.page %> / <%= pagination.totalPages %></span>
+      <% if (pagination.nextUrl) { %>
+        <a class="button button-secondary button-small" href="<%= pagination.nextUrl %>">다음</a>
+      <% } %>
+    </div>
+  </nav>
+<% } %>

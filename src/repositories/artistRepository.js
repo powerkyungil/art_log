@@ -1,28 +1,22 @@
 import { pool, withTransaction } from '../db/pool.js';
 
 export const artistRepository = {
-  async list({ search = '', status = '' } = {}) {
-    const conditions = [];
-    const params = [];
-    if (search) {
-      conditions.push(`(a.name LIKE ? OR a.phone LIKE ? OR EXISTS (
-        SELECT 1 FROM artist_links al
-        WHERE al.artist_id = a.id AND (al.platform LIKE ? OR al.url LIKE ?)
-      ))`);
-      const keyword = `%${search}%`;
-      params.push(keyword, keyword, keyword, keyword);
-    }
-    if (status) {
-      conditions.push('a.status = ?');
-      params.push(status);
-    }
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  async list({ search = '', status = '', limit = null, offset = 0 } = {}) {
+    const { where, params } = artistFilter({ search, status });
+    const pagination = Number.isInteger(limit) ? ' LIMIT ? OFFSET ?' : '';
+    if (pagination) params.push(limit, offset);
     const [rows] = await pool.execute(
       `SELECT a.id, a.name, a.phone, a.access_token_version, a.status, a.created_at, a.updated_at
-       FROM artists a ${where} ORDER BY a.name ASC, a.id DESC`,
+       FROM artists a ${where} ORDER BY a.name ASC, a.id DESC${pagination}`,
       params
     );
     return attachLinks(rows);
+  },
+
+  async count({ search = '', status = '' } = {}) {
+    const { where, params } = artistFilter({ search, status });
+    const [rows] = await pool.execute(`SELECT COUNT(*) AS count FROM artists a ${where}`, params);
+    return Number(rows[0].count);
   },
 
   async findById(id) {
@@ -109,6 +103,27 @@ export const artistRepository = {
     return rows;
   }
 };
+
+function artistFilter({ search = '', status = '' } = {}) {
+  const conditions = [];
+  const params = [];
+  if (search) {
+    conditions.push(`(a.name LIKE ? OR a.phone LIKE ? OR EXISTS (
+      SELECT 1 FROM artist_links al
+      WHERE al.artist_id = a.id AND (al.platform LIKE ? OR al.url LIKE ?)
+    ))`);
+    const keyword = `%${search}%`;
+    params.push(keyword, keyword, keyword, keyword);
+  }
+  if (status) {
+    conditions.push('a.status = ?');
+    params.push(status);
+  }
+  return {
+    where: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
+    params
+  };
+}
 
 async function attachArtist(artist) {
   if (!artist) return null;

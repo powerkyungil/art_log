@@ -1,19 +1,28 @@
 import { pool, withTransaction } from '../db/pool.js';
 
 export const assignmentRepository = {
-  async list({ includeHidden = true } = {}) {
+  async list({ includeHidden = true, limit = null, offset = 0, order = 'asc' } = {}) {
     const conditions = [];
     const params = [];
     if (!includeHidden) conditions.push('ass.is_visible = 1');
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const pagination = Number.isInteger(limit) ? ' LIMIT ? OFFSET ?' : '';
+    const direction = order === 'desc' ? 'DESC' : 'ASC';
+    if (pagination) params.push(limit, offset);
     const [rows] = await pool.execute(
       `SELECT ass.*
        FROM assignments ass
        ${where}
-       ORDER BY ass.round_no ASC, ass.start_at ASC, ass.id ASC`,
+       ORDER BY ass.round_no ${direction}, ass.start_at ${direction}, ass.id ${direction}${pagination}`,
       params
     );
     return rows;
+  },
+
+  async count({ includeHidden = true } = {}) {
+    const where = includeHidden ? '' : 'WHERE ass.is_visible = 1';
+    const [rows] = await pool.execute(`SELECT COUNT(*) AS count FROM assignments ass ${where}`);
+    return Number(rows[0].count);
   },
 
   async nextRoundNo() {

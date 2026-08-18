@@ -69,44 +69,33 @@ export const submissionRepository = {
     return submissions[0] || null;
   },
 
-  async listForArtist(artistId) {
+  async listForArtist(artistId, { limit = null, urgentFirst = false } = {}) {
+    const orderBy = urgentFirst
+      ? `CASE WHEN ass.due_at >= datetime('now', 'localtime') THEN 0 ELSE 1 END ASC,
+         CASE WHEN ass.due_at >= datetime('now', 'localtime') THEN ass.due_at END ASC,
+         CASE WHEN ass.due_at < datetime('now', 'localtime') THEN ass.due_at END DESC,
+         ass.round_no ASC, ass.id ASC`
+      : 'ass.round_no ASC, ass.start_at ASC, ass.id ASC';
+    const params = [artistId];
+    const pagination = Number.isInteger(limit) ? ' LIMIT ?' : '';
+    if (pagination) params.push(limit);
     const [rows] = await pool.execute(
-      `SELECT ass.id AS assignment_id, ass.round_no, ass.title, ass.topic, ass.start_at, ass.due_at,
+      `SELECT ass.id AS assignment_id, ass.round_no, ass.title, ass.topic, ass.description, ass.start_at, ass.due_at,
               s.id AS submission_id, s.upload_date, s.upload_channel, s.post_url, s.status,
               s.submitted_at, s.updated_at
        FROM assignments ass
        LEFT JOIN submissions s ON s.assignment_id = ass.id AND s.artist_id = ?
        WHERE ass.is_visible = 1
-       ORDER BY ass.round_no ASC, ass.start_at ASC, ass.id ASC`,
-      [artistId]
+       ORDER BY ${orderBy}${pagination}`,
+      params
     );
     return attachPostUrls(rows, 'submission_id');
   },
 
-  async list({ search = '', status = '', assignmentId = '', channel = '' } = {}) {
-    const conditions = [];
-    const params = [];
-    if (search) {
-      conditions.push(`(a.name LIKE ? OR s.post_url LIKE ? OR EXISTS (
-        SELECT 1 FROM submission_urls su_search
-        WHERE su_search.submission_id = s.id AND su_search.url LIKE ?
-      ))`);
-      const keyword = `%${search}%`;
-      params.push(keyword, keyword, keyword);
-    }
-    if (status) {
-      conditions.push('s.status = ?');
-      params.push(status);
-    }
-    if (assignmentId) {
-      conditions.push('s.assignment_id = ?');
-      params.push(assignmentId);
-    }
-    if (channel) {
-      conditions.push('s.upload_channel = ?');
-      params.push(channel);
-    }
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  async list({ search = '', status = '', assignmentId = '', channel = '', limit = null, offset = 0 } = {}) {
+    const { where, params } = submissionFilter({ search, status, assignmentId, channel });
+    const pagination = Number.isInteger(limit) ? ' LIMIT ? OFFSET ?' : '';
+    if (pagination) params.push(limit, offset);
     const [rows] = await pool.execute(
       `SELECT s.*, a.name AS artist_name, ass.round_no, ass.title AS assignment_title,
               ass.topic, ass.due_at
@@ -114,10 +103,23 @@ export const submissionRepository = {
        JOIN artists a ON a.id = s.artist_id
        JOIN assignments ass ON ass.id = s.assignment_id
        ${where}
-       ORDER BY s.submitted_at DESC, s.id DESC`,
+       ORDER BY s.submitted_at DESC, s.id DESC${pagination}`,
       params
     );
     return attachPostUrls(rows);
+  },
+
+  async count({ search = '', status = '', assignmentId = '', channel = '' } = {}) {
+    const { where, params } = submissionFilter({ search, status, assignmentId, channel });
+    const [rows] = await pool.execute(
+      `SELECT COUNT(*) AS count
+       FROM submissions s
+       JOIN artists a ON a.id = s.artist_id
+       JOIN assignments ass ON ass.id = s.assignment_id
+       ${where}`,
+      params
+    );
+    return Number(rows[0].count);
   },
 
   async create({ artistId, assignmentId, uploadDate, uploadChannel, postUrls }) {
@@ -174,8 +176,13 @@ export const submissionRepository = {
     return Number(rows[0].count);
   },
 
-  async dashboardRows() {
+  async dashboardRows({ assignmentIds = [] } = {}) {
     const conditions = ["a.status = 'ACTIVE'", 'ass.is_visible = 1'];
+    const params = [];
+    if (assignmentIds.length) {
+      conditions.push(`ass.id IN (${assignmentIds.map(() => '?').join(', ')})`);
+      params.push(...assignmentIds);
+    }
     const [rows] = await pool.execute(
       `SELECT a.id AS artist_id, a.name AS artist_name, a.status AS artist_status,
               ass.id AS assignment_id, ass.round_no, ass.title AS assignment_title,
@@ -186,8 +193,38 @@ export const submissionRepository = {
        CROSS JOIN assignments ass
        LEFT JOIN submissions s ON s.artist_id = a.id AND s.assignment_id = ass.id
        WHERE ${conditions.join(' AND ')}
-       ORDER BY a.name ASC, ass.round_no ASC, ass.start_at ASC, ass.id ASC`
+       ORDER BY a.name ASC, ass.round_no ASC, ass.start_at ASC, ass.id ASC`,
+      params
     );
     return attachPostUrls(rows, 'submission_id');
   }
 };
+
+function submissionFilter({ search = '', status = '', assignmentId = '', channel = '' } = {}) {
+  const conditions = [];
+  const params = [];
+  if (search) {
+    conditions.push(`(a.name LIKE ? OR s.post_url LIKE ? OR EXISTS (
+      SELECT 1 FROM submission_urls su_search
+      WHERE su_search.submission_id = s.id AND su_search.url LIKE ?
+    ))`);
+    const keyword = `%${search}%`;
+    params.push(keyword, keyword, keyword);
+  }
+  if (status) {
+    conditions.push('s.status = ?');
+    params.push(status);
+  }
+  if (assignmentId) {
+    conditions.push('s.assignment_id = ?');
+    params.push(assignmentId);
+  }
+  if (channel) {
+    conditions.push('s.upload_channel = ?');
+    params.push(channel);
+  }
+  return {
+    where: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
+    params
+  };
+}

@@ -7,13 +7,13 @@
 
 <section class="section-card">
   <% if (!assignments.length) { %><div class="empty-state">등록된 미션이 없습니다.</div><% } else { %>
-    <div class="table-wrap"><table>
+    <div class="table-wrap"><table class="assignment-table">
       <thead><tr><th>미션</th><th>제목</th><th>주제</th><th>제출 기간</th><th>대상</th><th>공개</th><th></th></tr></thead>
       <tbody>
         <% assignments.forEach((assignment) => { %><tr>
           <td><strong>미션 <%= assignment.round_no %></strong></td>
-          <td><strong><%= assignment.title %></strong><br><span class="muted-text small-text"><%= assignment.description || '' %></span></td>
-          <td><%= assignment.topic %></td>
+          <td class="assignment-text-cell"><strong class="assignment-table-title" title="<%= assignment.title %>"><%= assignment.title %></strong><span class="muted-text small-text assignment-table-description" title="<%= assignment.description || '' %>"><%= assignment.description || '' %></span></td>
+          <td><span class="assignment-table-topic" title="<%= assignment.topic %>"><%= assignment.topic %></span></td>
           <td><%= formatDateTime(assignment.start_at) %><br>~ <%= formatDateTime(assignment.due_at) %></td>
           <td>전체 활동 작가</td>
           <td><span class="badge badge-<%= assignment.is_visible ? 'success' : 'muted' %>"><%= assignment.is_visible ? '공개' : '비공개' %></span></td>
@@ -25,6 +25,7 @@
         </tr><% }) %>
       </tbody>
     </table></div>
+    <%- include('../partials/pagination', { pagination }) %>
   <% } %>
 </section>
 

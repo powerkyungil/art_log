@@ -11,12 +11,81 @@ const CHANNELS = ['Instagram', 'YouTube', 'Blog', 'TikTok', '기타'];
 const ARTIST_STATUSES = ['ACTIVE', 'INACTIVE', 'COMPLETED'];
 const SOCIAL_PLATFORMS = ['Instagram', 'YouTube', 'TikTok', 'Blog', 'X', 'Facebook', '기타'];
 const SUBMITTED_STATUSES = new Set(['SUBMITTED', 'CONFIRMED']);
+const ADMIN_PAGE_SIZE = 10;
 
 function formError(res, view, data, message, status = 422) {
   return res.status(status).render(view, { ...data, error: message });
 }
 
-function buildDashboard(rows, assignments, query) {
+function createPagination(
+  totalItems,
+  requestedPage,
+  path,
+  query = {},
+  pageSize = ADMIN_PAGE_SIZE,
+  pageParam = 'page'
+) {
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const parsedPage = Number.parseInt(requestedPage, 10);
+  const page = Math.min(Math.max(Number.isInteger(parsedPage) ? parsedPage : 1, 1), totalPages);
+  const offset = (page - 1) * pageSize;
+  const pageUrl = (targetPage) => {
+    const params = new URLSearchParams();
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== '' && value !== null && value !== undefined) params.set(key, String(value));
+    });
+    params.set(pageParam, String(targetPage));
+    return `${path}?${params.toString()}`;
+  };
+
+  return {
+    page,
+    totalPages,
+    totalItems,
+    perPage: pageSize,
+    offset,
+    startItem: totalItems ? offset + 1 : 0,
+    endItem: Math.min(offset + pageSize, totalItems),
+    previousUrl: page > 1 ? pageUrl(page - 1) : null,
+    nextUrl: page < totalPages ? pageUrl(page + 1) : null
+  };
+}
+
+function findCurrentAssignment(assignments) {
+  const now = Date.now();
+  const started = assignments.filter((assignment) => new Date(assignment.start_at).getTime() <= now);
+  return assignments.find((assignment) => {
+    const start = new Date(assignment.start_at).getTime();
+    const due = new Date(assignment.due_at).getTime();
+    return start <= now && due >= now;
+  }) || [...started].reverse()[0] || null;
+}
+
+function paginateAssignments(assignments, requestedPage, query = {}) {
+  const groups = [];
+  const groupsByRound = new Map();
+  for (const assignment of assignments) {
+    let group = groupsByRound.get(assignment.round_no);
+    if (!group) {
+      group = { roundNo: assignment.round_no, assignments: [] };
+      groupsByRound.set(assignment.round_no, group);
+      groups.push(group);
+    }
+    group.assignments.push(assignment);
+  }
+
+  groups.reverse();
+  const totalItems = groups.length;
+  const pagination = createPagination(totalItems, requestedPage, '/admin/progress', query);
+  const pageGroups = groups.slice(pagination.offset, pagination.offset + pagination.perPage);
+
+  return {
+    assignments: pageGroups.flatMap((group) => group.assignments),
+    pagination
+  };
+}
+
+function buildDashboard(rows, assignments, query, currentAssignment = undefined) {
   const artists = new Map();
 
   for (const row of rows) {
@@ -42,11 +111,7 @@ function buildDashboard(rows, assignments, query) {
 
   const now = Date.now();
   const targetAssignments = assignments.filter((assignment) => new Date(assignment.start_at).getTime() <= now);
-  const current = assignments.find((assignment) => {
-    const start = new Date(assignment.start_at).getTime();
-    const due = new Date(assignment.due_at).getTime();
-    return start <= now && due >= now;
-  }) || [...targetAssignments].reverse()[0] || null;
+  const current = currentAssignment === undefined ? findCurrentAssignment(assignments) : currentAssignment;
 
   const assignmentGroups = [];
   for (const assignment of assignments) {
@@ -130,32 +195,103 @@ function buildDashboard(rows, assignments, query) {
   };
 }
 
+function buildMonthlyOverview(dashboard) {
+  const now = new Date();
+  const sameMonth = (value) => {
+    const date = new Date(value);
+    return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+  };
+  const missions = dashboard.assignmentGroups
+    .filter((group) => sameMonth(group.assignments[0].start_at))
+    .map((group) => {
+      const mission = group.assignments[0];
+      const start = new Date(mission.start_at);
+      const due = new Date(mission.due_at);
+      const state = start > now ? 'UPCOMING' : due < now ? 'ENDED' : 'IN_PROGRESS';
+      return { ...group, mission, state };
+    });
+  const startedMissions = missions.filter((mission) => mission.state !== 'UPCOMING');
+  const applicableCount = startedMissions.reduce((sum, mission) => sum + mission.applicableCount, 0);
+  const submittedCount = startedMissions.reduce((sum, mission) => sum + mission.submittedCount, 0);
+
+  return {
+    monthLabel: `${now.getMonth() + 1}월`,
+    missions,
+    totalCount: missions.length,
+    inProgressCount: missions.filter((mission) => mission.state === 'IN_PROGRESS').length,
+    endedCount: missions.filter((mission) => mission.state === 'ENDED').length,
+    upcomingCount: missions.filter((mission) => mission.state === 'UPCOMING').length,
+    submittedCount,
+    applicableCount,
+    missingCount: applicableCount - submittedCount,
+    progressRate: applicableCount ? Math.round((submittedCount / applicableCount) * 100) : 0,
+    activeArtistCount: dashboard.artists.length
+  };
+}
+
 export const adminController = {
   async dashboard(req, res) {
-    const [assignments, rows] = await Promise.all([
+    const [assignments, rows, recentSubmissions, notices] = await Promise.all([
       assignmentRepository.list({ includeHidden: false }),
-      submissionRepository.dashboardRows()
+      submissionRepository.dashboardRows(),
+      submissionRepository.list({ limit: 5, offset: 0 }),
+      noticeRepository.list({ includeHidden: true, limit: 3, offset: 0 })
     ]);
     const dashboard = buildDashboard(rows, assignments, req.query);
+    dashboard.monthly = buildMonthlyOverview(dashboard);
+    dashboard.monthly.pagination = createPagination(
+      dashboard.monthly.missions.length,
+      req.query.mission_page,
+      '/admin/dashboard',
+      { artist_page: req.query.artist_page || '' },
+      20,
+      'mission_page'
+    );
+    dashboard.monthly.missions = dashboard.monthly.missions.slice(
+      dashboard.monthly.pagination.offset,
+      dashboard.monthly.pagination.offset + dashboard.monthly.pagination.perPage
+    );
+    dashboard.artistPagination = createPagination(
+      dashboard.artists.length,
+      req.query.artist_page,
+      '/admin/dashboard',
+      { mission_page: req.query.mission_page || '' },
+      20,
+      'artist_page'
+    );
+    dashboard.artists = dashboard.artists.slice(
+      dashboard.artistPagination.offset,
+      dashboard.artistPagination.offset + dashboard.artistPagination.perPage
+    );
     return res.render('admin/dashboard', {
       title: '대시보드',
-      dashboard
+      dashboard,
+      recentSubmissions,
+      notices
     });
   },
 
   async assignmentProgress(req, res) {
-    const [assignments, rows] = await Promise.all([
-      assignmentRepository.list({ includeHidden: false }),
-      submissionRepository.dashboardRows()
-    ]);
-    const dashboard = buildDashboard(rows, assignments, req.query);
+    const allAssignments = await assignmentRepository.list({ includeHidden: false });
+    const { assignments, pagination } = paginateAssignments(allAssignments, req.query.page, {
+      search: req.query.search || ''
+    });
+    const rows = assignments.length
+      ? await submissionRepository.dashboardRows({ assignmentIds: assignments.map((assignment) => assignment.id) })
+      : [];
+    const dashboard = buildDashboard(rows, assignments, req.query, findCurrentAssignment(allAssignments));
+    dashboard.pagination = pagination;
     return res.render('admin/progress/index', { title: '미션 진행 현황', dashboard });
   },
 
   async artists(req, res) {
     const filters = { search: req.query.search || '', status: req.query.status || '' };
-    const artists = await artistRepository.list(filters);
-    return res.render('admin/artists/index', { title: '작가 관리', artists, filters, statuses: ARTIST_STATUSES });
+    const totalItems = await artistRepository.count(filters);
+    const pagination = createPagination(totalItems, req.query.page, '/admin/artists', filters, 20);
+    const artists = await artistRepository.list({ ...filters, limit: pagination.perPage, offset: pagination.offset });
+    return res.render('admin/artists/index', {
+      title: '작가 관리', artists, filters, statuses: ARTIST_STATUSES, pagination
+    });
   },
 
   showArtistCreate(req, res) {
@@ -270,8 +406,12 @@ export const adminController = {
   },
 
   async assignments(req, res) {
-    const assignments = await assignmentRepository.list({ includeHidden: true });
-    return res.render('admin/assignments/index', { title: '미션 관리', assignments });
+    const totalItems = await assignmentRepository.count({ includeHidden: true });
+    const pagination = createPagination(totalItems, req.query.page, '/admin/assignments');
+    const assignments = await assignmentRepository.list({
+      includeHidden: true, limit: pagination.perPage, offset: pagination.offset, order: 'desc'
+    });
+    return res.render('admin/assignments/index', { title: '미션 관리', assignments, pagination });
   },
 
   async showAssignmentCreate(req, res) {
@@ -331,11 +471,22 @@ export const adminController = {
       search: req.query.search || '', status: req.query.status || '',
       assignmentId: req.query.assignment_id || '', channel: req.query.channel || ''
     };
-    const [submissions, assignments] = await Promise.all([
-      submissionRepository.list(filters),
+    const [totalItems, assignments] = await Promise.all([
+      submissionRepository.count(filters),
       assignmentRepository.list({ includeHidden: true })
     ]);
-    return res.render('admin/submissions/index', { title: '제출 내역', submissions, assignments, filters, channels: CHANNELS });
+    const pagination = createPagination(totalItems, req.query.page, '/admin/submissions', {
+      search: filters.search,
+      status: filters.status,
+      assignment_id: filters.assignmentId,
+      channel: filters.channel
+    });
+    const submissions = await submissionRepository.list({
+      ...filters, limit: pagination.perPage, offset: pagination.offset
+    });
+    return res.render('admin/submissions/index', {
+      title: '제출 내역', submissions, assignments, filters, channels: CHANNELS, pagination
+    });
   },
 
   async submissionDetail(req, res) {
@@ -356,8 +507,12 @@ export const adminController = {
   },
 
   async notices(req, res) {
-    const notices = await noticeRepository.list({ includeHidden: true });
-    return res.render('admin/notices/index', { title: '공지사항', notices });
+    const totalItems = await noticeRepository.count({ includeHidden: true });
+    const pagination = createPagination(totalItems, req.query.page, '/admin/notices');
+    const notices = await noticeRepository.list({
+      includeHidden: true, limit: pagination.perPage, offset: pagination.offset
+    });
+    return res.render('admin/notices/index', { title: '공지사항', notices, pagination });
   },
 
   showNoticeCreate(req, res) {

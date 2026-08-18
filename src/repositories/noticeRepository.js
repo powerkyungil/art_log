@@ -1,14 +1,26 @@
 import { pool } from '../db/pool.js';
 
 export const noticeRepository = {
-  async list({ includeHidden = true } = {}) {
+  async list({ includeHidden = true, limit = null, offset = 0 } = {}) {
     const where = includeHidden
       ? ''
       : "WHERE is_visible = 1 AND (published_at IS NULL OR published_at <= datetime('now', 'localtime'))";
+    const params = [];
+    const pagination = Number.isInteger(limit) ? ' LIMIT ? OFFSET ?' : '';
+    if (pagination) params.push(limit, offset);
     const [rows] = await pool.execute(
-      `SELECT * FROM notices ${where} ORDER BY is_pinned DESC, published_at DESC, id DESC`
+      `SELECT * FROM notices ${where} ORDER BY is_pinned DESC, published_at DESC, id DESC${pagination}`,
+      params
     );
     return rows;
+  },
+
+  async count({ includeHidden = true } = {}) {
+    const where = includeHidden
+      ? ''
+      : "WHERE is_visible = 1 AND (published_at IS NULL OR published_at <= datetime('now', 'localtime'))";
+    const [rows] = await pool.execute(`SELECT COUNT(*) AS count FROM notices ${where}`);
+    return Number(rows[0].count);
   },
 
   async findById(id) {

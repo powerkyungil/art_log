@@ -29,8 +29,7 @@
               <div>
                 <div class="eyebrow">MISSION <%= group.roundNo %></div>
                 <h2>미션 <%= group.roundNo %></h2>
-                <h3><%= mission.title %></h3>
-                <p class="muted-text"><%= mission.topic %></p>
+                <h3 class="mission-card-title"><%= mission.title %></h3>
               </div>
               <div class="mission-card-meta">
                 <% if (group.isCurrent) { %><span class="badge badge-info">현재 진행 중</span><% } %>
@@ -48,35 +47,53 @@
               </div>
             </div>
 
-            <div class="mission-artists">
-              <div class="mission-artists-heading">
-                <h3>작가별 현황</h3>
-                <span class="small-text muted-text">모든 활동 작가 공통 미션</span>
-              </div>
-              <div class="mission-artist-list">
-                <% dashboard.artists.forEach((artist) => { %>
-                  <% const assignmentStatus = assignmentStatusList(artist).find((item) => item.assignmentId === mission.id) || emptyAssignmentStatus; %>
-                  <% const completed = ['SUBMITTED', 'CONFIRMED'].includes(assignmentStatus.status); %>
-                  <div class="mission-artist-row">
-                    <div class="mission-artist-main">
-                      <strong><%= displayName(artist.name) %></strong>
-                      <% if (assignmentStatus.submittedAt) { %>
-                        <span class="small-text muted-text">제출 <%= formatDateTime(assignmentStatus.submittedAt) %></span>
-                      <% } else { %>
-                        <span class="small-text muted-text">아직 제출하지 않았습니다.</span>
-                      <% } %>
-                    </div>
-                    <div class="mission-artist-actions">
-                      <span class="badge badge-<%= statusClass(assignmentStatus.status) %>"><%= completed ? '완료' : '미완료' %></span>
-                      <% if (assignmentStatus.postUrls?.length) { %><%- include('../../partials/submission-urls', { urls: assignmentStatus.postUrls, compact: true }) %><% } %>
-                    </div>
+            <div class="mission-sections">
+              <details class="mission-section">
+                <summary class="mission-section-summary">
+                  <span class="mission-section-heading"><strong>미션 내용</strong><span class="small-text muted-text">제목 · 주제 · 내용</span></span>
+                  <span class="mission-section-toggle" aria-hidden="true"><span class="mission-section-closed">보기</span><span class="mission-section-open">닫기</span><span class="mission-section-icon"></span></span>
+                </summary>
+                <div class="mission-content-details">
+                  <div class="mission-content-row"><span class="detail-label">제목</span><strong><%= mission.title %></strong></div>
+                  <div class="mission-content-row"><span class="detail-label">주제</span><span><%= mission.topic %></span></div>
+                  <div class="mission-content-row"><span class="detail-label">내용</span><span class="mission-content-description"><%= mission.description || '등록된 미션 설명이 없습니다.' %></span></div>
+                </div>
+              </details>
+
+              <details class="mission-section">
+                <summary class="mission-section-summary">
+                  <span class="mission-section-heading"><strong>작가별 현황</strong><span class="small-text muted-text">모든 활동 작가 공통 미션</span></span>
+                  <span class="mission-section-toggle" aria-hidden="true"><span class="mission-section-closed">보기</span><span class="mission-section-open">닫기</span><span class="mission-section-icon"></span></span>
+                </summary>
+                <div class="mission-artists">
+                  <div class="mission-artist-list">
+                    <% dashboard.artists.forEach((artist) => { %>
+                      <% const assignmentStatus = assignmentStatusList(artist).find((item) => item.assignmentId === mission.id) || emptyAssignmentStatus; %>
+                      <% const completed = ['SUBMITTED', 'CONFIRMED'].includes(assignmentStatus.status); %>
+                      <div class="mission-artist-row">
+                        <div class="mission-artist-main">
+                          <strong><%= displayName(artist.name) %></strong>
+                          <% if (assignmentStatus.submittedAt) { %>
+                            <span class="small-text muted-text">제출 <%= formatDateTime(assignmentStatus.submittedAt) %></span>
+                          <% } else { %>
+                            <span class="small-text muted-text">아직 제출하지 않았습니다.</span>
+                          <% } %>
+                        </div>
+                        <div class="mission-artist-actions">
+                          <span class="badge badge-<%= statusClass(assignmentStatus.status) %>"><%= completed ? '완료' : '미완료' %></span>
+                          <% if (assignmentStatus.postUrls?.length) { %><%- include('../../partials/submission-urls', { urls: assignmentStatus.postUrls, compact: true }) %><% } %>
+                        </div>
+                      </div>
+                    <% }) %>
                   </div>
-                <% }) %>
-              </div>
+                </div>
+              </details>
             </div>
           </article>
         <% }) %>
       </div>
+
+      <%- include('./pagination', { pagination: dashboard.pagination }) %>
     <% } %>
   <% } %>
 </section>

@@ -3,8 +3,8 @@
 <div class="page-heading">
   <div>
     <div class="eyebrow">OVERVIEW</div>
-    <h1>전체 진행률</h1>
-    <p>작가별 전체 미션 진행률을 한눈에 확인할 수 있습니다.</p>
+    <h1>운영 대시보드</h1>
+    <p>이달의 미션 진행 현황과 최근 활동을 한눈에 확인합니다.</p>
   </div>
   <div class="actions">
     <a class="button button-secondary" href="/admin/progress">미션 진행 현황</a>
@@ -12,10 +12,109 @@
   </div>
 </div>
 
+<section class="stats-grid dashboard-stats">
+  <div class="stat-card">
+    <span class="stat-label"><%= dashboard.monthly.monthLabel %> 미션</span>
+    <strong class="stat-value"><%= dashboard.monthly.totalCount %></strong>
+    <span class="small-text muted-text">진행 <%= dashboard.monthly.inProgressCount %> · 종료 <%= dashboard.monthly.endedCount %> · 예정 <%= dashboard.monthly.upcomingCount %></span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label"><%= dashboard.monthly.monthLabel %> 전체 제출률</span>
+    <strong class="stat-value"><%= dashboard.monthly.progressRate %>%</strong>
+    <span class="small-text muted-text"><%= dashboard.monthly.submittedCount %>/<%= dashboard.monthly.applicableCount %>건 · 시작된 미션 기준</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">현재 미제출</span>
+    <strong class="stat-value"><%= dashboard.monthly.missingCount %></strong>
+    <span class="small-text muted-text"><%= dashboard.monthly.monthLabel %> 시작 미션 기준</span>
+  </div>
+  <div class="stat-card">
+    <span class="stat-label">활동 작가</span>
+    <strong class="stat-value"><%= dashboard.monthly.activeArtistCount %></strong>
+    <span class="small-text muted-text">현재 활동중 상태</span>
+  </div>
+</section>
+
+<section class="section-card">
+  <div class="section-title">
+    <h2><%= dashboard.monthly.monthLabel %> 전체 미션 진행 현황</h2>
+    <span class="small-text muted-text">미션 시작일 기준</span>
+  </div>
+  <% if (!dashboard.monthly.missions.length) { %>
+    <div class="empty-state compact-empty">이달에 등록된 공개 미션이 없습니다.</div>
+  <% } else { %>
+    <div class="monthly-mission-list">
+      <% dashboard.monthly.missions.forEach((item) => { %>
+        <div class="monthly-mission-row">
+          <div class="monthly-mission-main">
+            <strong>미션 <%= item.roundNo %> · <%= item.mission.title %></strong>
+            <span class="small-text muted-text"><%= formatDateTime(item.mission.start_at) %> ~ <%= formatDateTime(item.mission.due_at) %></span>
+          </div>
+          <span class="badge badge-<%= item.state === 'IN_PROGRESS' ? 'info' : item.state === 'ENDED' ? 'muted' : 'warning' %>"><%= item.state === 'IN_PROGRESS' ? '진행 중' : item.state === 'ENDED' ? '종료' : '예정' %></span>
+          <div class="monthly-mission-progress">
+            <% if (item.state === 'UPCOMING') { %>
+              <span class="small-text muted-text">시작 전</span>
+            <% } else { %>
+              <div class="progress-cell">
+                <div class="progress" title="<%= item.progressRate %>%"><div class="progress-bar" style="width:<%= item.progressRate %>%"></div></div>
+                <span class="small-text"><%= item.submittedCount %>/<%= item.applicableCount %> · <%= item.progressRate %>%</span>
+              </div>
+            <% } %>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+    <%- include('./partials/pagination', { pagination: dashboard.monthly.pagination }) %>
+  <% } %>
+</section>
+
+<div class="dashboard-grid">
+  <section class="section-card">
+    <div class="section-title">
+      <h2>최근 제출</h2>
+      <a class="small-text link-muted" href="/admin/submissions">전체 보기</a>
+    </div>
+    <% if (!recentSubmissions.length) { %>
+      <div class="empty-state compact-empty">제출 내역이 없습니다.</div>
+    <% } else { %>
+      <div class="dashboard-list">
+        <% recentSubmissions.forEach((submission) => { %>
+          <a class="dashboard-list-item" href="/admin/submissions/<%= submission.id %>">
+            <span><strong><%= displayName(submission.artist_name) %></strong><span class="small-text muted-text">미션 <%= submission.round_no %> · <%= submission.upload_channel %></span></span>
+            <span class="badge badge-<%= statusClass(submission.status) %>"><%= statusLabel(submission.status) %></span>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+
+  <section class="section-card">
+    <div class="section-title">
+      <h2>공지사항</h2>
+      <a class="small-text link-muted" href="/admin/notices">전체 보기</a>
+    </div>
+    <% if (!notices.length) { %>
+      <div class="empty-state compact-empty">등록된 공지사항이 없습니다.</div>
+    <% } else { %>
+      <div class="dashboard-list">
+        <% notices.forEach((notice) => { %>
+          <a class="dashboard-list-item" href="/admin/notices/<%= notice.id %>/edit">
+            <span class="dashboard-notice-main">
+              <strong class="dashboard-notice-title"><% if (notice.is_pinned) { %><span class="badge badge-info">고정</span> <% } %><%= notice.title %></strong>
+              <span class="small-text muted-text dashboard-notice-preview"><%= notice.content %></span>
+            </span>
+            <span class="badge badge-<%= notice.is_visible ? 'success' : 'muted' %>"><%= notice.is_visible ? '공개' : '비공개' %></span>
+          </a>
+        <% }) %>
+      </div>
+    <% } %>
+  </section>
+</div>
+
 <section class="section-card progress-overview-card">
   <div class="section-title">
     <h2>작가별 전체 진행률</h2>
-    <span class="small-text muted-text">공개된 미션 기준</span>
+    <span class="small-text muted-text">제출이 시작된 공개 미션 기준</span>
   </div>
 
   <% if (!dashboard.assignments.length) { %>
@@ -39,6 +138,7 @@
         </div>
       <% }) %>
     </div>
+    <%- include('./partials/pagination', { pagination: dashboard.artistPagination }) %>
   <% } %>
 </section>
 
