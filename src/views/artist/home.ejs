@@ -1,4 +1,5 @@
 <%- include('../partials/artist-head', { title }) %>
+<% const visiblePeerSubmissions = typeof peerSubmissions !== 'undefined' && Array.isArray(peerSubmissions) ? peerSubmissions : []; %>
 
 <section class="card hero-card" style="margin-bottom:18px">
   <div class="eyebrow">MY ACTIVITY</div>
@@ -44,13 +45,13 @@
               <h3>다른 작가의 게시물 둘러보기</h3>
               <p class="small-text muted-text">같은 미션을 완료한 작가들의 결과물을 직접 확인해보세요.</p>
             </div>
-            <span class="badge badge-info"><%= peerSubmissions.length %>명</span>
+            <span class="badge badge-info"><%= visiblePeerSubmissions.length %>명</span>
           </div>
-          <% if (!peerSubmissions.length) { %>
+          <% if (!visiblePeerSubmissions.length) { %>
             <div class="empty-state peer-submissions-empty">아직 이 미션을 제출한 다른 작가가 없습니다.</div>
           <% } else { %>
             <div class="peer-submission-list">
-              <% peerSubmissions.forEach((submission) => { %>
+              <% visiblePeerSubmissions.forEach((submission) => { %>
                 <div class="peer-submission-row">
                   <div class="peer-submission-artist">
                     <strong><%= displayName(submission.artist_name) %></strong>
