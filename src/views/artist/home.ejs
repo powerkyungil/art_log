@@ -36,6 +36,38 @@
             <a class="button button-primary" href="/artist/submissions/new?assignment_id=<%= currentAssignment.id %>">미션 제출하기</a>
           <% } %>
         </div>
+
+        <div class="peer-submissions">
+          <div class="peer-submissions-heading">
+            <div>
+              <div class="eyebrow">MISSION INSPIRATION</div>
+              <h3>다른 작가의 게시물 둘러보기</h3>
+              <p class="small-text muted-text">같은 미션을 완료한 작가들의 결과물을 직접 확인해보세요.</p>
+            </div>
+            <span class="badge badge-info"><%= peerSubmissions.length %>명</span>
+          </div>
+          <% if (!peerSubmissions.length) { %>
+            <div class="empty-state peer-submissions-empty">아직 이 미션을 제출한 다른 작가가 없습니다.</div>
+          <% } else { %>
+            <div class="peer-submission-list">
+              <% peerSubmissions.forEach((submission) => { %>
+                <div class="peer-submission-row">
+                  <div class="peer-submission-artist">
+                    <strong><%= displayName(submission.artist_name) %></strong>
+                    <span class="small-text muted-text"><%= submission.upload_channel %></span>
+                  </div>
+                  <div class="peer-submission-links">
+                    <% submission.post_urls.forEach((url, index) => { %>
+                      <a class="button button-primary peer-submission-link" href="<%= url %>" target="_blank" rel="noopener noreferrer" title="<%= url %>">
+                        게시물 보러가기<% if (submission.post_urls.length > 1) { %> <%= index + 1 %><% } %><span aria-hidden="true">↗</span>
+                      </a>
+                    <% }) %>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          <% } %>
+        </div>
       <% } %>
     </section>
 

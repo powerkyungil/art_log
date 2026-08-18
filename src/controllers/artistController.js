@@ -98,11 +98,14 @@ export const artistController = {
       assignmentRepository.findNextForArtist(req.artist.id),
       noticeRepository.list({ includeHidden: false })
     ]);
-    const [submission, activity] = await Promise.all([
+    const [submission, activity, peerSubmissions] = await Promise.all([
       currentAssignment
         ? submissionRepository.findByArtistAndAssignment(req.artist.id, currentAssignment.id)
         : null,
-      submissionRepository.listForArtist(req.artist.id, { limit: 10, urgentFirst: true })
+      submissionRepository.listForArtist(req.artist.id, { limit: 10, urgentFirst: true }),
+      currentAssignment
+        ? submissionRepository.listSubmittedForAssignment(currentAssignment.id, { excludeArtistId: req.artist.id })
+        : []
     ]);
     const currentSubmission = submission ? { ...submission, submission_id: submission.id } : null;
     return res.render('artist/home', {
@@ -111,6 +114,7 @@ export const artistController = {
       nextAssignment,
       notices: notices.slice(0, 5),
       activity,
+      peerSubmissions,
       currentSubmission
     });
   },

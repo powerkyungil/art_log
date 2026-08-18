@@ -92,6 +92,29 @@ export const submissionRepository = {
     return attachPostUrls(rows, 'submission_id');
   },
 
+  async listSubmittedForAssignment(assignmentId, { excludeArtistId = null } = {}) {
+    const conditions = [
+      's.assignment_id = ?',
+      "a.status = 'ACTIVE'",
+      "s.status IN ('SUBMITTED', 'CONFIRMED')"
+    ];
+    const params = [assignmentId];
+    if (excludeArtistId !== null) {
+      conditions.push('s.artist_id <> ?');
+      params.push(excludeArtistId);
+    }
+    const [rows] = await pool.execute(
+      `SELECT s.id AS submission_id, s.artist_id, a.name AS artist_name,
+              s.upload_channel, s.post_url, s.status, s.submitted_at
+       FROM submissions s
+       JOIN artists a ON a.id = s.artist_id
+       WHERE ${conditions.join(' AND ')}
+       ORDER BY s.submitted_at DESC, s.id DESC`,
+      params
+    );
+    return attachPostUrls(rows, 'submission_id');
+  },
+
   async list({ search = '', status = '', assignmentId = '', channel = '', limit = null, offset = 0 } = {}) {
     const { where, params } = submissionFilter({ search, status, assignmentId, channel });
     const pagination = Number.isInteger(limit) ? ' LIMIT ? OFFSET ?' : '';
