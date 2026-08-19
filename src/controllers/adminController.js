@@ -5,7 +5,7 @@ import { submissionRepository } from '../repositories/submissionRepository.js';
 import { DEFAULT_ARTIST_PASSWORD, hashArtistPassword } from '../utils/artistAuth.js';
 import { createAccessToken } from '../utils/tokens.js';
 import { isValidDateTime, isValidUrl, required } from '../utils/validation.js';
-import { toSqlDateTime } from '../utils/http.js';
+import { localNextPath, toSqlDateTime } from '../utils/http.js';
 
 const CHANNELS = ['Instagram', 'YouTube', 'Blog', 'TikTok', '기타'];
 const ARTIST_STATUSES = ['ACTIVE', 'INACTIVE', 'COMPLETED'];
@@ -526,9 +526,15 @@ export const adminController = {
     if (!data.title || !data.content) {
       return formError(res, 'admin/notices/form', { title: '공지사항 등록', mode: 'create', notice: req.body }, '제목과 내용을 입력해주세요.');
     }
-    await noticeRepository.create(data);
+    const notice = await noticeRepository.create(data);
     req.flash('success', '공지사항이 등록되었습니다.');
-    return res.redirect('/admin/notices');
+    return res.redirect(`/admin/notices/${notice.id}`);
+  },
+
+  async noticeDetail(req, res) {
+    const notice = await noticeRepository.findById(req.params.id);
+    if (!notice) return res.status(404).render('error', { title: '공지사항을 찾을 수 없습니다', message: '존재하지 않는 공지사항입니다.' });
+    return res.render('admin/notices/detail', { title: '공지사항 상세', notice });
   },
 
   async showNoticeEdit(req, res) {
@@ -546,13 +552,13 @@ export const adminController = {
     }
     await noticeRepository.update(req.params.id, data);
     req.flash('success', '공지사항이 수정되었습니다.');
-    return res.redirect('/admin/notices');
+    return res.redirect(`/admin/notices/${req.params.id}`);
   },
 
   async toggleNotice(req, res) {
     await noticeRepository.toggleVisibility(req.params.id);
     req.flash('success', '공지사항 공개 상태가 변경되었습니다.');
-    return res.redirect('/admin/notices');
+    return res.redirect(localNextPath(req.body.next, '/admin/notices'));
   },
 
   async deleteNotice(req, res) {

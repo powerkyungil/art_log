@@ -49,6 +49,7 @@ router.get('/notices', asyncHandler(adminController.notices));
 router.get('/notices/new', adminController.showNoticeCreate);
 router.post('/notices', asyncHandler(adminController.createNotice));
 router.get('/notices/:id/edit', asyncHandler(adminController.showNoticeEdit));
+router.get('/notices/:id', asyncHandler(adminController.noticeDetail));
 router.post('/notices/:id', asyncHandler(adminController.updateNotice));
 router.post('/notices/:id/toggle', asyncHandler(adminController.toggleNotice));
 router.post('/notices/:id/delete', asyncHandler(adminController.deleteNotice));

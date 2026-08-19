@@ -98,7 +98,7 @@
     <% } else { %>
       <div class="dashboard-list">
         <% notices.forEach((notice) => { %>
-          <a class="dashboard-list-item" href="/admin/notices/<%= notice.id %>/edit">
+          <a class="dashboard-list-item" href="/admin/notices/<%= notice.id %>">
             <span class="dashboard-notice-main">
               <strong class="dashboard-notice-title"><% if (notice.is_pinned) { %><span class="badge badge-info">고정</span> <% } %><%= notice.title %></strong>
               <span class="small-text muted-text dashboard-notice-preview"><%= notice.content %></span>

@@ -1,0 +1,30 @@
+<%- include('../../partials/admin-head', { title }) %>
+
+<div class="page-heading notice-detail-heading">
+  <div><div class="eyebrow">NOTICE DETAIL</div><h1><%= notice.title %></h1><p>공지사항의 전체 내용과 공개 정보를 확인합니다.</p></div>
+  <div class="actions"><a class="button button-secondary" href="/admin/notices">목록으로</a></div>
+</div>
+
+<section class="section-card">
+  <div class="detail-grid">
+    <div class="detail-item"><span class="detail-label">공개 상태</span><span class="detail-value"><span class="badge badge-<%= notice.is_visible ? 'success' : 'muted' %>"><%= notice.is_visible ? '공개' : '비공개' %></span></span></div>
+    <div class="detail-item"><span class="detail-label">상단 고정</span><span class="detail-value"><%= notice.is_pinned ? '고정' : '고정 안 함' %></span></div>
+    <div class="detail-item"><span class="detail-label">공개 예정일</span><span class="detail-value"><%= notice.published_at ? formatDateTime(notice.published_at) : '즉시 공개' %></span></div>
+    <div class="detail-item"><span class="detail-label">등록일</span><span class="detail-value"><%= formatDateTime(notice.created_at) %></span></div>
+  </div>
+</section>
+
+<section class="section-card">
+  <h2>공지 내용</h2>
+  <div class="notice-content notice-detail-content"><%= notice.content %></div>
+</section>
+
+<section class="section-card">
+  <div class="actions">
+    <a class="button button-primary" href="/admin/notices/<%= notice.id %>/edit">수정</a>
+    <form method="post" action="/admin/notices/<%= notice.id %>/toggle" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><input type="hidden" name="next" value="/admin/notices/<%= notice.id %>"><button class="button button-secondary" type="submit"><%= notice.is_visible ? '비공개로 전환' : '공개로 전환' %></button></form>
+    <form method="post" action="/admin/notices/<%= notice.id %>/delete" class="inline-form"><input type="hidden" name="_csrf" value="<%= csrfToken %>"><button class="button button-danger" type="submit" data-confirm="이 공지사항을 삭제할까요?">삭제</button></form>
+  </div>
+</section>
+
+<%- include('../../partials/admin-foot') %>
